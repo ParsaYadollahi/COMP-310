@@ -150,9 +150,7 @@ void divideFloats(float a, float b, int clientdf)
 ////////////////////////
 int sleepy(int x, int clientdf)
 {
-  printf("before sleep inside function");
   sleep(x);
-  printf("after sleep inside function");
   char *result_string = "";
   send_message(clientdf, result_string, strlen(result_string));
   return TRUE;
@@ -208,9 +206,7 @@ void two_params(char *cmd, int x, int clientdf)
   float result = 0;
   if (!strcmp(cmd, "sleep"))
   {
-    printf("Before sleep function");
     sleepy(x, clientdf);
-    printf("After sleep");
   }
   else if (!strcmp(cmd, "factorial"))
   {
