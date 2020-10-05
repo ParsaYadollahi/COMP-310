@@ -8,13 +8,16 @@
 
 #define BUFSIZE 1024
 
-int main(void)
+int main(int argc, char *argv[])
 {
   int sockfd;
   char user_input[BUFSIZE] = {0};
   char server_msg[BUFSIZE] = {0};
 
-  if (connect_to_server("0.0.0.0", 10000, &sockfd) < 0)
+  char *server_name = argv[1];
+  int server_pid = atoi(argv[2]);
+
+  if (connect_to_server(server_name, server_pid, &sockfd) < 0)
   {
     fprintf(stderr, "oh no\n");
     return -1;
@@ -40,9 +43,3 @@ int main(void)
 
   return 0;
 }
-
-// int main(void)
-// {
-//   rpc_t *backend = RPC_Connect("0.0.0.0", 10000);
-//   printf("AAAAA");
-// }

@@ -1,22 +1,30 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
-#include <string.h>
+#include <stdbool.h>
+#include <unistd.h>
 
 #include "a1_lib.h"
 #include "backend.h"
 
 #define BUFSIZE 1024
+#define TRUE 1
+#define FALSE 0
 
 int main(void)
 {
+  // Paramatrer
   char *two_param[] = {"add", "multiply", "divide"};
   char *one_param[] = {"factorial", "sleep"};
   char *no_param[] = {"quit", "shutdown", "exit"};
+
   int sockfd, clientfd;
   char msg[BUFSIZE];
   const char *greeting = "hello, world\n";
   int running = 1;
   int result;
+  int pid, pid1, pid2;
+  pid = fork();
 
   if (create_server("0.0.0.0", 10000, &sockfd) < 0)
   {
@@ -41,26 +49,16 @@ int main(void)
     {
       int x = atoi(strtok(NULL, " "));
       int y = atoi(strtok(NULL, " "));
-      if (!strcmp(param, "add"))
-      {
-        result = addInts(x, y);
-      }
-      else if (!strcmp(param, "multiply"))
-      {
-        result = multiplyInts(x, y);
-      }
-      else if (!strcmp(param, "divide"))
-      {
-        result = divideFloats((float)x, (float)y);
-      }
-      printf("%d\n", result);
+      result = three_params(param, x, y);
     }
     else if (inArray(param, one_param, 2))
     {
       int x = atoi(strtok(NULL, " "));
+      result = two_params(param, x);
     }
     else if (inArray(param, no_param, 3))
     {
+      printf("\nQUIT\n");
     }
     else
     {
@@ -72,7 +70,10 @@ int main(void)
       break;
     }
     printf("Client: %s\n", msg);
-    send_message(clientfd, greeting, strlen(greeting));
+    char result_string[1024];
+    sprintf(result_string, "%d", result);
+
+    send_message(clientfd, result_string, strlen(result_string));
   }
 
   return 0;
@@ -100,7 +101,12 @@ float divideFloats(float a, float b)
   float result = a / (float)(b);
   return result;
 }
-int sleep(int x);
+
+int sleepy(int x)
+{
+  sleep(x);
+  return 1;
+}
 // make the calculator sleep for x seconds – this is blocking
 uint64_t factorial(int x)
 {
@@ -108,22 +114,57 @@ uint64_t factorial(int x)
   {
     return (uint64_t)0;
   }
-  uint64_t result = 0;
-  for (int i = 0; i < x; i++)
+  uint64_t result = 1;
+  for (int i = 1; i <= x; i++)
   {
     result *= i;
   }
   return result;
 }
 
+//////////////////////////////////////////
+// CUSTOM FUNCTIONS
+//////////////////////////////////////////
 bool inArray(char *word, char **cmd, int len_cmd)
 {
   for (int i = 0; i < len_cmd; i++)
   {
     if (!strcmp(cmd[i], word))
     {
-      return true;
+      return TRUE;
     }
   }
-  return false;
+  return FALSE;
+}
+
+float three_params(char *cmd, int x, int y)
+{
+  float result = 0;
+  if (!strcmp(cmd, "add"))
+  {
+    result = addInts(x, y);
+  }
+  else if (!strcmp(cmd, "multiply"))
+  {
+    result = multiplyInts(x, y);
+  }
+  else if (!strcmp(cmd, "divide"))
+  {
+    result = divideFloats((float)x, (float)y);
+  }
+  return result;
+}
+
+uint64_t two_params(char *cmd, int x)
+{
+  float result = 0;
+  if (!strcmp(cmd, "sleep"))
+  {
+    result = (uint64_t)sleepy(x);
+  }
+  else if (!strcmp(cmd, "factorial"))
+  {
+    result = factorial(x);
+  }
+  return result;
 }
