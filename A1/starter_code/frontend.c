@@ -38,7 +38,7 @@ int main(int argc, char *argv[])
     {
       break;
     }
-    printf("Server: %s\n", server_msg);
+    printf("%s\n", server_msg);
   }
 
   return 0;

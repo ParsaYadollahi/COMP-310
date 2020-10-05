@@ -10,3 +10,4 @@ uint64_t factorial(int x); // return factorial x
 bool inArray(char *word, char **cmd, int len_cmd);
 float three_params(char *cmd, int x, int y);
 uint64_t two_params(char *cmd, int x);
+char *logic(char *msg, char **two_param, char **one_param, char **no_param);
