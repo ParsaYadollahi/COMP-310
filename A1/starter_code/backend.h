@@ -1,13 +1,13 @@
 #include <stdint.h>
 
-int addInts(int a, int b);      // add two integers
-int multiplyInts(int a, int b); // multiple two integers
-float divideFloats(float a, float b);
+void addInts(int a, int b, int clientdf);      // add two integers
+void multiplyInts(int a, int b, int clientdf); // multiple two integers
+void divideFloats(float a, float b, int clientdf);
 // divide float numbers (report divide by zero error)
-int sleepy(int x);
+void sleepy(int x);
 // make the calculator sleep for x seconds – this is blocking
-uint64_t factorial(int x); // return factorial x
+void factorial(int x, int clientdf); // return factorial x
 bool inArray(char *word, char **cmd, int len_cmd);
-float three_params(char *cmd, int x, int y);
-uint64_t two_params(char *cmd, int x);
-char *logic(char *msg, char **two_param, char **one_param, char **no_param);
+void three_params(char *cmd, int x, int y, int clientdf);
+void two_params(char *cmd, int x, int clientdf);
+void logic(char *msg, char **two_param, char **one_param, char **no_param, int clientdf);

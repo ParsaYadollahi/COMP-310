@@ -73,8 +73,8 @@ int main(int argc, char *argv[])
         {
           memset(msg, 0, sizeof(msg));
           ssize_t byte_count = recv_message(clientdf_array[i], msg, BUFSIZE);
-          char *result_string = logic(msg, two_param, one_param, no_param);
-          send_message(clientdf_array[i], result_string, strlen(result_string));
+          logic(msg, two_param, one_param, no_param, clientdf_array[i]);
+          // send_message(clientdf_array[i], result_string, strlen(result_string));
 
           // TODO: PARSE INPUT HERE
         }
@@ -85,7 +85,7 @@ int main(int argc, char *argv[])
   return 0;
 }
 
-char *logic(char *msg, char **two_param, char **one_param, char **no_param)
+void logic(char *msg, char **two_param, char **one_param, char **no_param, int clientdf)
 {
   int result = 0;
   char *param = strtok(msg, " ");
@@ -93,12 +93,12 @@ char *logic(char *msg, char **two_param, char **one_param, char **no_param)
   {
     int x = atoi(strtok(NULL, " "));
     int y = atoi(strtok(NULL, " "));
-    result = three_params(param, x, y);
+    three_params(param, x, y, clientdf);
   }
   else if (inArray(param, one_param, 2))
   {
     int x = atoi(strtok(NULL, " "));
-    result = two_params(param, x);
+    two_params(param, x, clientdf);
   }
   else if (inArray(param, no_param, 3))
   {
@@ -110,53 +110,60 @@ char *logic(char *msg, char **two_param, char **one_param, char **no_param)
   }
 
   printf("Client: %s\n", msg);
-  char *result_string = malloc(sizeof(char *) * 3);
-  sprintf(result_string, "%d", result);
-
-  return result_string;
 }
 
-int addInts(int a, int b)
+////////////////////////
+// MATH
+////////////////////////
+void addInts(int a, int b, int clientdf)
 {
   int result = a + b;
-  return result;
+  char *result_string = malloc(sizeof(char *) * 3);
+  sprintf(result_string, "%d", result);
+  send_message(clientdf, result_string, strlen(result_string));
 }
 
-int multiplyInts(int a, int b)
+void multiplyInts(int a, int b, int clientdf)
 {
   int result = a * b;
-  return result;
+  char *result_string = malloc(sizeof(char *) * 3);
+  sprintf(result_string, "%d", result);
+  send_message(clientdf, result_string, strlen(result_string));
 }
 
-float divideFloats(float a, float b)
+void divideFloats(float a, float b, int clientdf)
 {
   if (b == 0)
   {
     fprintf(stderr, "Cannot divide by 0\n");
-    return -1;
+    char *division_by_0_error = "Division by zero";
+    send_message(clientdf, division_by_0_error, strlen(division_by_0_error));
   }
   float result = a / (float)(b);
-  return result;
+  char *result_string = malloc(sizeof(char *) * 3);
+  sprintf(result_string, "%.6f", result);
+  send_message(clientdf, result_string, strlen(result_string));
 }
 
-int sleepy(int x)
+////////////////////////
+// SINGLE
+////////////////////////
+void sleepy(int x)
 {
   sleep(x);
-  return 1;
 }
 // make the calculator sleep for x seconds – this is blocking
-uint64_t factorial(int x)
+void factorial(int x, int clientdf)
 {
-  if (x < 0)
-  {
-    return (uint64_t)0;
-  }
   uint64_t result = 1;
-  for (int i = 1; i <= x; i++)
-  {
-    result *= i;
-  }
-  return result;
+  if (x > 0)
+    for (int i = 1; i <= x; i++)
+    {
+      result *= i;
+    }
+  char *result_string = malloc(sizeof(char *) * 3);
+  sprintf(result_string, "%llu", result);
+  send_message(clientdf, result_string, strlen(result_string));
 }
 
 //////////////////////////////////////////
@@ -174,34 +181,32 @@ bool inArray(char *word, char **cmd, int len_cmd)
   return FALSE;
 }
 
-float three_params(char *cmd, int x, int y)
+void three_params(char *cmd, int x, int y, int clientdf)
 {
   float result = 0;
   if (!strcmp(cmd, "add"))
   {
-    result = addInts(x, y);
+    addInts(x, y, clientdf);
   }
   else if (!strcmp(cmd, "multiply"))
   {
-    result = multiplyInts(x, y);
+    multiplyInts(x, y, clientdf);
   }
   else if (!strcmp(cmd, "divide"))
   {
-    result = divideFloats((float)x, (float)y);
+    divideFloats((float)x, (float)y, clientdf);
   }
-  return result;
 }
 
-uint64_t two_params(char *cmd, int x)
+void two_params(char *cmd, int x, int clientdf)
 {
   float result = 0;
   if (!strcmp(cmd, "sleep"))
   {
-    result = (uint64_t)sleepy(x);
+    sleepy(x);
   }
   else if (!strcmp(cmd, "factorial"))
   {
-    result = factorial(x);
+    factorial(x, clientdf);
   }
-  return result;
 }
