@@ -4,7 +4,7 @@ void addInts(int a, int b, int clientdf);      // add two integers
 void multiplyInts(int a, int b, int clientdf); // multiple two integers
 void divideFloats(float a, float b, int clientdf);
 // divide float numbers (report divide by zero error)
-void sleepy(int x);
+int sleepy(int x, int clientdf);
 // make the calculator sleep for x seconds – this is blocking
 void factorial(int x, int clientdf); // return factorial x
 bool inArray(char *word, char **cmd, int len_cmd);

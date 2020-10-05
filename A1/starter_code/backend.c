@@ -148,9 +148,14 @@ void divideFloats(float a, float b, int clientdf)
 ////////////////////////
 // SINGLE
 ////////////////////////
-void sleepy(int x)
+int sleepy(int x, int clientdf)
 {
+  printf("before sleep inside function");
   sleep(x);
+  printf("after sleep inside function");
+  char *result_string = "";
+  send_message(clientdf, result_string, strlen(result_string));
+  return TRUE;
 }
 // make the calculator sleep for x seconds – this is blocking
 void factorial(int x, int clientdf)
@@ -203,7 +208,9 @@ void two_params(char *cmd, int x, int clientdf)
   float result = 0;
   if (!strcmp(cmd, "sleep"))
   {
-    sleepy(x);
+    printf("Before sleep function");
+    sleepy(x, clientdf);
+    printf("After sleep");
   }
   else if (!strcmp(cmd, "factorial"))
   {
