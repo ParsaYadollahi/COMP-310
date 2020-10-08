@@ -108,7 +108,6 @@ void logic(char *msg, char **two_param, char **one_param, char **no_param, int c
   else if (inArray(param, no_param, 1))
   {
     // TODO SHUTDOWN
-    printf("BBBBBBBBBBB");
     no_params(clientdf, pid, pid_array);
   }
   else
