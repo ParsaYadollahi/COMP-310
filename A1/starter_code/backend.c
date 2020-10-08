@@ -225,14 +225,7 @@ void two_params(char *cmd, int x, int clientdf)
 
 void no_params(int clientdf, int pid, int *pid_array)
 {
-  int rval;
-  for (int i = 0; i < 5; i++)
-  {
-    waitpid(pid_array[i], &rval, WNOHANG);
-    printf("exit status : %d\n", WEXITSTATUS(rval));
-    exit(5);
-  }
-  // kill(pid, SIGKILL);
+  kill(pid, SIGKILL);
   char *result_string = "\n we closed \n";
   send_message(clientdf, result_string, strlen(result_string));
 }
