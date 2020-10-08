@@ -3,10 +3,14 @@
 #include <string.h>
 #include <stdbool.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <signal.h>
+#include <sys/wait.h>
 
 #include "a1_lib.h"
 #include "backend.h"
 
+#define _POSIX_SOURCE
 #define BUFSIZE 1024
 #define TRUE 1
 #define FALSE 0
@@ -16,7 +20,7 @@ int main(int argc, char *argv[])
   // Paramatrer
   char *two_param[] = {"add", "multiply", "divide"};
   char *one_param[] = {"factorial", "sleep"};
-  char *no_param[] = {"quit", "shutdown", "exit"};
+  char *no_param[] = {"shutdown\n"};
 
   int sockfd, clientfd1, clientfd2, clientfd3, clientfd4, clientfd5;
   char msg[BUFSIZE];
@@ -73,10 +77,11 @@ int main(int argc, char *argv[])
         {
           memset(msg, 0, sizeof(msg));
           ssize_t byte_count = recv_message(clientdf_array[i], msg, BUFSIZE);
-          logic(msg, two_param, one_param, no_param, clientdf_array[i]);
-          // send_message(clientdf_array[i], result_string, strlen(result_string));
-
-          // TODO: PARSE INPUT HERE
+          if (byte_count <= 0)
+          {
+            break;
+          }
+          logic(msg, two_param, one_param, no_param, clientdf_array[i], pid, pid_array);
         }
       }
     }
@@ -85,7 +90,7 @@ int main(int argc, char *argv[])
   return 0;
 }
 
-void logic(char *msg, char **two_param, char **one_param, char **no_param, int clientdf)
+void logic(char *msg, char **two_param, char **one_param, char **no_param, int clientdf, int pid, int *pid_array)
 {
   int result = 0;
   char *param = strtok(msg, " ");
@@ -100,13 +105,16 @@ void logic(char *msg, char **two_param, char **one_param, char **no_param, int c
     int x = atoi(strtok(NULL, " "));
     two_params(param, x, clientdf);
   }
-  else if (inArray(param, no_param, 3))
+  else if (inArray(param, no_param, 1))
   {
-    printf("\nQUIT\n");
+    // TODO SHUTDOWN
+    printf("BBBBBBBBBBB");
+    no_params(clientdf, pid, pid_array);
   }
   else
   {
-    printf("FFFFFFFFF");
+    char *result_string = "Not a valid command\n";
+    send_message(clientdf, result_string, strlen(result_string));
   }
 
   printf("Client: %s\n", msg);
@@ -151,9 +159,11 @@ void divideFloats(float a, float b, int clientdf)
 int sleepy(int x, int clientdf)
 {
   sleep(x);
-  char *result_string = "";
+  char *result_string = malloc(sizeof(char *) * 3);
+  sprintf(result_string, "%s", "\n");
   send_message(clientdf, result_string, strlen(result_string));
-  return TRUE;
+
+  return 1;
 }
 // make the calculator sleep for x seconds – this is blocking
 void factorial(int x, int clientdf)
@@ -176,7 +186,7 @@ bool inArray(char *word, char **cmd, int len_cmd)
 {
   for (int i = 0; i < len_cmd; i++)
   {
-    if (!strcmp(cmd[i], word))
+    if (strcmp(cmd[i], word) == 0)
     {
       return TRUE;
     }
@@ -212,4 +222,18 @@ void two_params(char *cmd, int x, int clientdf)
   {
     factorial(x, clientdf);
   }
+}
+
+void no_params(int clientdf, int pid, int *pid_array)
+{
+  int rval;
+  for (int i = 0; i < 5; i++)
+  {
+    waitpid(pid_array[i], &rval, WNOHANG);
+    printf("exit status : %d\n", WEXITSTATUS(rval));
+    exit(5);
+  }
+  // kill(pid, SIGKILL);
+  char *result_string = "\n we closed \n";
+  send_message(clientdf, result_string, strlen(result_string));
 }

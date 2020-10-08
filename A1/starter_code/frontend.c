@@ -30,6 +30,12 @@ int main(int argc, char *argv[])
 
     // read user input from command line
     fgets(user_input, BUFSIZE, stdin);
+
+    if (!strcmp(user_input, "exit\n"))
+    {
+      printf("Bye!");
+      break;
+    }
     // send the input to server
     send_message(sockfd, user_input, strlen(user_input));
     // receive a msg from the server
