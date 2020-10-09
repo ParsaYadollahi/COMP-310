@@ -33,7 +33,8 @@ int main(int argc, char *argv[])
 
     if (!strcmp(user_input, "exit\n"))
     {
-      printf("Bye!");
+      // Exit from loop and print ciao
+      printf("Bye!\n");
       break;
     }
     // send the input to server
