@@ -88,7 +88,7 @@ int main(int argc, char *argv[])
       }
     }
   }
-
+  free(msg);
   return 0;
 }
 
