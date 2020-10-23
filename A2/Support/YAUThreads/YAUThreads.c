@@ -1,86 +1,78 @@
 #include <stdio.h>
 #include <signal.h>
 #include <unistd.h>
-#include <stdlib.h>                                                                              
+#include <stdlib.h>
 #include "YAUThreads.h"
 
 threaddesc threadarr[MAX_THREADS];
 int numthreads, curthread;
 ucontext_t parent;
 
-
 void initYAUThreads()
 {
-	numthreads = 0;
-	curthread = 0;
+  numthreads = 0;
+  curthread = 0;
 }
 
-
-int YAUSpawn( void (threadfunc)() )
+int YAUSpawn(void(threadfunc)())
 {
-	threaddesc *tdescptr;
+  threaddesc *tdescptr;
 
-	if (numthreads >= 32) 
-	{
-		printf("FATAL: Maximum thread limit reached... creation failed! \n");
-		return -1;
-	}
+  if (numthreads >= 32)
+  {
+    printf("FATAL: Maximum thread limit reached... creation failed! \n");
+    return -1;
+  }
 
-	tdescptr = &(threadarr[numthreads]);
-	getcontext(&(tdescptr->threadcontext));
-	tdescptr->threadid = numthreads;
-	tdescptr->threadstack = (char *)malloc(THREAD_STACK_SIZE);
-	tdescptr->threadcontext.uc_stack.ss_sp = tdescptr->threadstack;
-	tdescptr->threadcontext.uc_stack.ss_size = THREAD_STACK_SIZE;
-	tdescptr->threadcontext.uc_link = 0;
-	tdescptr->threadcontext.uc_stack.ss_flags = 0;
-	tdescptr->threadfunc = threadfunc;
+  tdescptr = &(threadarr[numthreads]);
+  getcontext(&(tdescptr->threadcontext));
+  tdescptr->threadid = numthreads;
+  tdescptr->threadstack = (char *)malloc(THREAD_STACK_SIZE);
+  tdescptr->threadcontext.uc_stack.ss_sp = tdescptr->threadstack;
+  tdescptr->threadcontext.uc_stack.ss_size = THREAD_STACK_SIZE;
+  tdescptr->threadcontext.uc_link = 0;
+  tdescptr->threadcontext.uc_stack.ss_flags = 0;
+  tdescptr->threadfunc = threadfunc;
 
-	makecontext(&(tdescptr->threadcontext), threadfunc, 1, tdescptr);
+  makecontext(&(tdescptr->threadcontext), threadfunc, 1, tdescptr);
 
-	numthreads++;
+  numthreads++;
 
-	return 0;
+  return 0;
 }
 
-
-void handle_timerexpiry() 
+void handle_timerexpiry()
 {
-        struct sigaction handler;
-	int nxtthread, curthreadsave;
-	
-        handler.sa_handler = handle_timerexpiry;
-        sigaction(SIGALRM, &handler, NULL);
-        alarm(RR_QUANTUM);
+  struct sigaction handler;
+  int nxtthread, curthreadsave;
 
-	nxtthread = (curthread +1) % numthreads;
+  handler.sa_handler = handle_timerexpiry;
+  sigaction(SIGALRM, &handler, NULL);
+  alarm(RR_QUANTUM);
 
-	curthreadsave = curthread;
-	curthread = nxtthread;
-	swapcontext(&(threadarr[curthreadsave].threadcontext),
-		    &(threadarr[nxtthread].threadcontext));
+  nxtthread = (curthread + 1) % numthreads;
+
+  curthreadsave = curthread;
+  curthread = nxtthread;
+  swapcontext(&(threadarr[curthreadsave].threadcontext),
+              &(threadarr[nxtthread].threadcontext));
 }
- 
 
 void startYAUThreads(int sched)
 {
-	struct sigaction handler;
+  struct sigaction handler;
 
-	if (sched == RR && numthreads > 0)
-	{
-		handler.sa_handler = handle_timerexpiry;
-		sigaction(SIGALRM, &handler, NULL);
-		alarm(RR_QUANTUM);
+  if (sched == RR && numthreads > 0)
+  {
+    handler.sa_handler = handle_timerexpiry;
+    sigaction(SIGALRM, &handler, NULL);
+    alarm(RR_QUANTUM);
 
-		swapcontext(&parent, &(threadarr[curthread].threadcontext));
-	}	
+    swapcontext(&parent, &(threadarr[curthread].threadcontext));
+  }
 }
-
 
 int getYAUThreadid(threaddesc *th)
 {
-	return th->threadid;
+  return th->threadid;
 }
-
-		
-	
