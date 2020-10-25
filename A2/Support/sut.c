@@ -75,7 +75,7 @@ int sut_init()
   task_queue = queue_create();
   queue_init(&task_queue);
 
-  struct Task *task_d;
+  struct Task task_d;
   struct queue_entry *task = queue_new_node(&task_d);
   queue_insert_tail(&task_queue, task);
 
@@ -103,6 +103,7 @@ bool sut_create(sut_task_f fn)
 
   getcontext(&(task_description->threadcontext));
   task_description->threadstack = (char *)malloc(THREAD_STACK_SIZE);
+  printf("%s\n ", task_description->threadstack);
 
   task_description->threadcontext.uc_stack.ss_sp = task_description->threadstack;
   task_description->threadcontext.uc_stack.ss_size = THREAD_STACK_SIZE;
@@ -111,6 +112,7 @@ bool sut_create(sut_task_f fn)
   task_description->threadfunc = &fn;
 
   makecontext(&(task_description->threadcontext), fn, 0, task_description);
+  printf("CCCCCCCCCCCCC\n");
 
   // struct queue_entry *task_context = queue_new_node(&t1);
 

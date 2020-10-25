@@ -25,9 +25,11 @@ int YAUSpawn(void(threadfunc)())
   }
 
   tdescptr = &(threadarr[numthreads]);
+  printf("here %s\n", *tdescptr);
   getcontext(&(tdescptr->threadcontext));
   tdescptr->threadid = numthreads;
   tdescptr->threadstack = (char *)malloc(THREAD_STACK_SIZE);
+  printf("HELOOO %s\n ", *tdescptr->threadstack);
   tdescptr->threadcontext.uc_stack.ss_sp = tdescptr->threadstack;
   tdescptr->threadcontext.uc_stack.ss_size = THREAD_STACK_SIZE;
   tdescptr->threadcontext.uc_link = 0;
