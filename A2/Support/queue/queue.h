@@ -53,9 +53,22 @@ void queue_insert_tail(struct queue *q, struct queue_entry *e)
   STAILQ_INSERT_TAIL(q, e, entries);
 }
 
+int queue_not_empty(struct queue *q)
+{
+  if (!STAILQ_EMPTY(q))
+  {
+    return 1; // List is not empty
+  }
+  else
+  {
+    return 0;
+  }
+}
+
 struct queue_entry *queue_peek_front(struct queue *q)
 {
-  return STAILQ_FIRST(q);
+  if STAILQ_FIRST (q)
+    ;
 }
 
 struct queue_entry *queue_pop_head(struct queue *q)
