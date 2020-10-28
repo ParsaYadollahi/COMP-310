@@ -164,10 +164,10 @@ void sut_shutdown()
   pthread_cancel(c_exec_thread);
 }
 
-int main()
-{
-  sut_init();
-  sut_create(f1);
-  sut_create(f2);
-  sut_shutdown();
-}
+// int main()
+// {
+//   sut_init();
+//   sut_create(f1);
+//   sut_create(f2);
+//   sut_shutdown();
+// }
