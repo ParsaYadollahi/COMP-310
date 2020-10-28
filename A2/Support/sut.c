@@ -22,6 +22,7 @@
 #include "queue.h"
 
 #define MAX_THREADS 32
+#define BUFSIZE 1024
 #define THREAD_STACK_SIZE 1024 * 64
 
 typedef void (*sut_task_f)();
@@ -69,7 +70,7 @@ void hello1()
   sut_open(destination, port_number);
   for (i = 0; i < 3; i++)
   {
-    sprintf(sbuf, "Hello world!, message from SUT-One i = %d \n", i);
+    sprintf(sbuf, "echo \"WHATS GOOOOOOOOOOD\"\n");
     sut_write(sbuf, strlen(sbuf));
     sut_yield();
   }
@@ -99,14 +100,11 @@ void *c_exec_ftn(void *args)
 
 void *i_exec_ftn(void *args)
 {
-  pthread_mutex_t *m = args;
   while (true)
   {
-    pthread_mutex_lock(m);
-    printf("2 I-exec thread\n");
+    pthread_mutex_lock(&m);
     usleep(1000 * 1000);
-    printf("2 IEXEC\n");
-    pthread_mutex_unlock(m);
+    pthread_mutex_unlock(&m);
     usleep(1000 * 10000);
     break;
   }
@@ -201,9 +199,10 @@ void sut_open(char *dest, int port)
 
 void sut_write(char *buf, int size)
 {
-  printf("AAAAAAAA\n");
+  char server_msg[BUFSIZE] = {0};
   send_message(sockfd, buf, size);
-  printf("BBBBBBBB\n");
+  ssize_t byte_count = recv_message(sockfd, server_msg, sizeof(server_msg));
+  printf("%s\n", server_msg);
 }
 
 int main()
