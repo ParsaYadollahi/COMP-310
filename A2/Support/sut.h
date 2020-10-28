@@ -1,8 +1,22 @@
 #ifndef __SUT_H__
 #define __SUT_H__
 #include <stdbool.h>
+#include <ucontext.h>
 
 typedef void (*sut_task_f)();
+#define MAX_THREADS 32
+typedef struct __threaddesc
+{
+  int threadid;
+  char *threadstack;
+  void *threadfunc;
+  ucontext_t threadcontext;
+} threaddesc;
+
+extern threaddesc threadarr[MAX_THREADS];
+extern threaddesc *current_task;
+extern int numthreads, curthread;
+extern ucontext_t parent;
 
 void sut_init();
 bool sut_create(sut_task_f fn);
