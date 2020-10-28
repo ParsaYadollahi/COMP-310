@@ -32,21 +32,14 @@ threaddesc *task_description;
 static pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
 pthread_t c_exec_thread;
 
-struct Point
-{
-  int x, y;
-};
-
 void f1()
 {
-  printf("enter f1\n");
   for (int i = 0; i < 5; i++)
   {
     usleep(1000 * 1000);
     printf("Hello world!, this is SUT-One \n");
     sut_yield();
   }
-  printf("sut exit f1\n");
   sut_exit();
 }
 
@@ -58,7 +51,6 @@ void f2()
     printf("Hello world!, this is SUT-Two \n");
     sut_yield();
   }
-  printf("sut exit f2\n");
   sut_exit();
 }
 
@@ -127,6 +119,7 @@ bool sut_create(sut_task_f fn)
     getcontext(&(task_description->threadcontext));
     task_description->threadstack = (char *)malloc(THREAD_STACK_SIZE);
     task_description->threadid = numthreads;
+    numthreads++;
 
     task_description->threadcontext.uc_stack.ss_sp = task_description->threadstack;
     task_description->threadcontext.uc_stack.ss_size = THREAD_STACK_SIZE;
@@ -134,16 +127,12 @@ bool sut_create(sut_task_f fn)
     task_description->threadcontext.uc_stack.ss_flags = 0;
     task_description->threadfunc = fn;
 
-    makecontext(&(task_description->threadcontext), fn, 0);
+    makecontext(&(task_description->threadcontext), task_description->threadfunc, 0);
 
     pthread_mutex_lock(&m);
-    numthreads++;
 
     struct queue_entry *new_node = queue_new_node(task_description);
     queue_insert_tail(&task_ready_queue, new_node);
-
-    // threaddesc *t = (threaddesc *)queue_peek_front(&task_ready_queue)->data;
-    // printf("PEEK %d\n", t->threadid);
 
     pthread_mutex_unlock(&m);
   }
@@ -151,36 +140,32 @@ bool sut_create(sut_task_f fn)
 
 void sut_yield()
 {
-  struct queue_entry *new_node = queue_new_node(current_task);
-
   pthread_mutex_lock(&m);
-  queue_insert_tail(&task_ready_queue, new_node);
+
+  struct queue_entry *old_node = queue_pop_head(&task_ready_queue);
+  threaddesc *old_task = (threaddesc *)old_node->data;
+
+  queue_insert_tail(&task_ready_queue, old_node);
   pthread_mutex_unlock(&m);
 
-  threaddesc *tail_task = (threaddesc *)new_node->data;
-
-  printf("1 Task_ID = %d\n", tail_task->threadid);
-  current_task = tail_task;
-
-  makecontext(&(tail_task->threadcontext), tail_task->threadfunc, 0);
+  current_task = old_task;
 
   pthread_mutex_lock(&m);
-  threaddesc *new_task = (threaddesc *)queue_pop_head(&task_ready_queue)->data;
+  threaddesc *new_task = (threaddesc *)queue_peek_front(&task_ready_queue)->data;
   pthread_mutex_unlock(&m);
-  printf("2 Task_ID = %d\n", new_task->threadid);
 
-  swapcontext(&current_task->threadcontext, &new_task->threadcontext);
+  swapcontext(&old_task->threadcontext, &new_task->threadcontext);
 }
 
 void sut_exit()
 {
-  //TODO: setcontext - instead of swapcontext
   setcontext(&current_task->threadcontext);
 }
 
 void sut_shutdown()
 {
   pthread_join(c_exec_thread, NULL);
+  pthread_cancel(c_exec_thread);
 }
 
 int main()
@@ -189,28 +174,4 @@ int main()
   sut_create(f1);
   sut_create(f2);
   sut_shutdown();
-  printf("BBBBB\n");
-  printf("EMPTY QUEUE %d\n", queue_not_empty(&task_ready_queue));
 }
-
-// // EXAMPLE
-// // threaddesc *p1 = &(threadarr[numthreads]);
-// threadarr[numthreads].threadid = 1;
-// printf("A\n");
-// struct queue q = queue_create();
-// queue_init(&q);
-// struct queue_entry *node = queue_new_node(&threadarr[numthreads]);
-// queue_insert_tail(&q, node);
-// threaddesc *p = (threaddesc *)queue_peek_front(&q)->data;
-// printf("%d\n", threadarr[numthreads].threadid);
-// // END EXMAPLE
-
-// // EXAMPLE
-// struct Point p1 = {85, 1};
-// struct queue q = queue_create();
-// queue_init(&q);
-// struct queue_entry *node = queue_new_node(&p1);
-// queue_insert_tail(&q, node);
-// struct Point *p = (struct Point *)queue_peek_front(&q)->data;
-// printf("%d\n", p->y);
-// // END EXMAPLE
