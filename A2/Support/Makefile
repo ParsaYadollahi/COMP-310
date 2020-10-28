@@ -2,13 +2,17 @@
 
 CC=gcc
 
-
 sut:
+	@clear
+	@rm -rf a.out
+	@$(CC) sut.c a1_lib.c -l pthread && ./a.out
+
+sut_clean:
 	@clear
 	@rm -rf a.out
 	@rm -rf sut.c
 	@vim sut.c
-	@$(CC) sut.c -l pthread && ./a.out
+	@$(CC) sut.c a1_lib.c -l pthread && ./a.out
 
 test1:
 	@clear

@@ -6,6 +6,7 @@ void hello1()
 {
   int i;
   char *str;
+  // sut_open(HOST, PORT);
   for (i = 0; i < 10; i++)
   {
     str = sut_read();
@@ -15,6 +16,7 @@ void hello1()
       printf("ERROR!, empty message received \n");
     sut_yield();
   }
+  // sut_close()
   sut_exit();
 }
 

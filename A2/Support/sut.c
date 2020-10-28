@@ -13,7 +13,11 @@
 #include <ucontext.h>
 #include <pthread.h>
 #include <time.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
 
+#include "a1_lib.h"
 #include "sut.h"
 #include "queue.h"
 
@@ -30,6 +34,11 @@ threaddesc *task_description;
 
 static pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
 pthread_t c_exec_thread;
+pthread_t i_exec_thread;
+
+int sockfd;
+char *destination = "0.0.0.0";
+int port_number = 8088;
 
 void f1()
 {
@@ -53,6 +62,21 @@ void f2()
   sut_exit();
 }
 
+void hello1()
+{
+  int i;
+  char sbuf[128];
+  sut_open(destination, port_number);
+  for (i = 0; i < 3; i++)
+  {
+    sprintf(sbuf, "Hello world!, message from SUT-One i = %d \n", i);
+    sut_write(sbuf, strlen(sbuf));
+    sut_yield();
+  }
+  // sut_close();
+  sut_exit();
+}
+
 void *c_exec_ftn(void *args)
 {
   while (true)
@@ -65,7 +89,6 @@ void *c_exec_ftn(void *args)
       pthread_mutex_unlock(&m);
 
       swapcontext(&parent, &new_task->threadcontext);
-      printf("AAA\n");
     }
     else
     {
@@ -74,19 +97,20 @@ void *c_exec_ftn(void *args)
   }
 }
 
-// void *i_exec_ftn(void *args)
-// {
-//   pthread_mutex_t *m = args;
-//   while (true)
-//   {
-//     pthread_mutex_lock(m);
-//     printf("2 I-exec thread\n");
-//     usleep(1000 * 1000);
-//     printf("2 IEXEC\n");
-//     pthread_mutex_unlock(m);
-//     usleep(1000 * 1000);
-//   }
-// }
+void *i_exec_ftn(void *args)
+{
+  pthread_mutex_t *m = args;
+  while (true)
+  {
+    pthread_mutex_lock(m);
+    printf("2 I-exec thread\n");
+    usleep(1000 * 1000);
+    printf("2 IEXEC\n");
+    pthread_mutex_unlock(m);
+    usleep(1000 * 10000);
+    break;
+  }
+}
 
 void sut_init()
 {
@@ -100,9 +124,7 @@ void sut_init()
   pthread_mutex_unlock(&m);
 
   pthread_create(&c_exec_thread, NULL, c_exec_ftn, NULL);
-  // pthread_create(&i_exec_thread, NULL, i_exec_ftn, &m);
-
-  // pthread_join(i_exec_thread, NULL);
+  pthread_create(&i_exec_thread, NULL, i_exec_ftn, &m);
 }
 
 bool sut_create(sut_task_f fn)
@@ -161,13 +183,34 @@ void sut_exit()
 void sut_shutdown()
 {
   pthread_join(c_exec_thread, NULL);
+  pthread_join(i_exec_thread, NULL);
   pthread_cancel(c_exec_thread);
 }
 
-// int main()
-// {
-//   sut_init();
-//   sut_create(f1);
-//   sut_create(f2);
-//   sut_shutdown();
-// }
+void sut_open(char *dest, int port)
+{
+  if (connect_to_server(dest, port, &sockfd) < 0)
+  {
+    fprintf(stderr, "oops no connection!\n");
+  }
+  else
+  {
+    printf("Connected\n");
+  }
+}
+
+void sut_write(char *buf, int size)
+{
+  printf("AAAAAAAA\n");
+  send_message(sockfd, buf, size);
+  printf("BBBBBBBB\n");
+}
+
+int main()
+{
+  sut_init();
+  sut_create(f1);
+  sut_create(f2);
+  sut_create(hello1);
+  sut_shutdown();
+}
