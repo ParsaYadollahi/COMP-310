@@ -25,7 +25,6 @@ struct queue task_ready_queue;
 struct queue wait_queue;
 int numthreads, curthread;
 ucontext_t parent;
-threaddesc *current_task;
 threaddesc threadarr[MAX_THREADS];
 threaddesc *task_description;
 
@@ -63,9 +62,7 @@ void *c_exec_ftn(void *args)
     {
       pthread_mutex_lock(&m);
       threaddesc *new_task = (threaddesc *)queue_peek_front(&task_ready_queue)->data;
-      printf("\t\t\tThread id = %d\n", new_task->threadid);
       pthread_mutex_unlock(&m);
-      current_task = new_task;
 
       swapcontext(&parent, &new_task->threadcontext);
       printf("AAA\n");
@@ -148,8 +145,6 @@ void sut_yield()
   queue_insert_tail(&task_ready_queue, old_node);
   pthread_mutex_unlock(&m);
 
-  current_task = old_task;
-
   pthread_mutex_lock(&m);
   threaddesc *new_task = (threaddesc *)queue_peek_front(&task_ready_queue)->data;
   pthread_mutex_unlock(&m);
@@ -159,7 +154,8 @@ void sut_yield()
 
 void sut_exit()
 {
-  setcontext(&current_task->threadcontext);
+  threaddesc *last_task = (threaddesc *)queue_peek_front(&task_ready_queue)->data;
+  setcontext(&last_task->threadcontext);
 }
 
 void sut_shutdown()
