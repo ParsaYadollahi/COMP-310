@@ -32,7 +32,7 @@ test3:
 test4:
 	@clear
 	@rm -rf a.out
-	@gcc test4.c sut.c -l pthread
+	@gcc test4.c sut.c a1_lib.c -l pthread
 
 test5:
 	@clear

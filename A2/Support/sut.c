@@ -38,6 +38,7 @@ static pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
 pthread_t c_exec_thread;
 pthread_t i_exec_thread;
 
+char server_msg[BUFSIZE] = {0};
 int sockfd;
 char *destination = "0.0.0.0";
 int port_number = 8088;
@@ -64,7 +65,7 @@ void f2()
   sut_exit();
 }
 
-void hello1()
+void f_io_1()
 {
   int i;
   char sbuf[128];
@@ -76,6 +77,24 @@ void hello1()
     sut_yield();
   }
   // sut_close();
+  sut_exit();
+}
+
+void f_io_2()
+{
+  int i;
+  char *str;
+  // sut_open(HOST, PORT);
+  for (i = 0; i < 10; i++)
+  {
+    str = sut_read();
+    if (strlen(str) != 0)
+      printf("I am SUT-One, message from server: %s\n", str);
+    else
+      printf("ERROR!, empty message received \n");
+    sut_yield();
+  }
+  // sut_close()
   sut_exit();
 }
 
@@ -109,27 +128,37 @@ void *i_exec_ftn()
     {
       pthread_mutex_lock(&m);
       iothread *new_task_io = (iothread *)queue_pop_head(&wait_queue)->data;
-      struct queue_entry *task_to_enqueue_back = queue_pop_head(&wait_queue);
+      struct queue_entry *node_to_enqueue_back = queue_pop_head(&wait_queue);
+      threaddesc *task_to_enqueue_back = (threaddesc *)node_to_enqueue_back->data;
+
       pthread_mutex_unlock(&m);
       if (new_task_io->function_number == 1) // write function
       {
-        char server_msg[BUFSIZE] = {0};
         send_message(sockfd, new_task_io->buffer, new_task_io->size);
-        ssize_t byte_count = recv_message(sockfd, server_msg, sizeof(server_msg));
-        printf("%s\n", server_msg);
       }
       else if (new_task_io->function_number == 0) // read function
       {
-        printf("--REAAAD--\n");
+        while (true)
+        {
+          memset(server_msg, 0, sizeof(server_msg));
+          ssize_t byte_count = recv_message(sockfd, server_msg, sizeof(server_msg));
+          if (strlen(server_msg) != 0)
+          {
+            printf("I am SUT-One, message from server: %s\n", server_msg);
+          }
+        }
+        // Put task back into queue once finished
+        usleep(1000 * 10000);
+        pthread_mutex_lock(&m);
+        queue_insert_tail(&task_ready_queue, node_to_enqueue_back);
+
+        setcontext(&task_to_enqueue_back->threadcontext);
+        pthread_mutex_unlock(&m);
       }
-      usleep(1000 * 10000);
-      pthread_mutex_lock(&m);
-      queue_insert_tail(&task_ready_queue, task_to_enqueue_back);
-      pthread_mutex_unlock(&m);
-    }
-    else
-    {
-      continue;
+      else
+      {
+        continue;
+      }
     }
   }
 }
@@ -232,9 +261,10 @@ void sut_write(char *buf, int size)
 
   pthread_mutex_lock(&m);
   threaddesc *current = (threaddesc *)queue_peek_front(&task_ready_queue)->data;
-  struct queue_entry *new_node = queue_new_node(current);
+  struct queue_entry *c_exec_new_node = queue_new_node(current);
   pthread_mutex_unlock(&m);
 
+  // Create new node for the wait queue
   iothread *new_io_thread = &(iothreadarr[io_numthreads]);
   new_io_thread->function_number = 1;
   new_io_thread->buffer = buf;
@@ -244,20 +274,38 @@ void sut_write(char *buf, int size)
 
   usleep(1000 * 1000);
   pthread_mutex_lock(&m);
+  io_numthreads++;
   queue_insert_tail(&wait_queue, new_io_node);
-  queue_insert_tail(&wait_queue, new_node);
+  queue_insert_tail(&wait_queue, c_exec_new_node);
   pthread_mutex_unlock(&m);
 }
 
 char *sut_read()
 {
+  pthread_mutex_lock(&m);
+  threaddesc *current = (threaddesc *)queue_peek_front(&task_ready_queue)->data;
+  struct queue_entry *c_exec_new_node = queue_new_node(current);
+  pthread_mutex_unlock(&m);
+
+  iothread *new_io_thread = &(iothreadarr[io_numthreads]);
+  new_io_thread->function_number = 0;
+  new_io_thread->buffer = "";
+  new_io_thread->size = 0;
+
+  struct queue_entry *new_io_node = queue_new_node(new_io_thread);
+  pthread_mutex_lock(&m);
+  io_numthreads++;
+  queue_insert_tail(&wait_queue, new_io_node);
+  queue_insert_tail(&wait_queue, c_exec_new_node);
+  pthread_mutex_unlock(&m);
 }
 
-int main()
-{
-  sut_init();
-  sut_create(f1);
-  sut_create(f2);
-  sut_create(hello1);
-  sut_shutdown();
-}
+// int main()
+// {
+//   sut_init();
+//   sut_create(f1);
+//   sut_create(f2);
+//   sut_create(f_io_1);
+//   sut_create(f_io_2);
+//   sut_shutdown();
+// }
