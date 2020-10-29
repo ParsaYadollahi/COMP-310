@@ -16,6 +16,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <signal.h>
 
 #include "a1_lib.h"
 #include "sut.h"
@@ -132,40 +133,37 @@ void *i_exec_ftn()
       threaddesc *task_to_enqueue_back = (threaddesc *)node_to_enqueue_back->data;
 
       pthread_mutex_unlock(&m);
-      if (new_task_io->function_number == 1) // write function
+      if (new_task_io->function_number == 2) // write function
       {
         send_message(sockfd, new_task_io->buffer, new_task_io->size);
       }
-      else if (new_task_io->function_number == 0) // read function
+      else if (new_task_io->function_number == 1) // read function
       {
-        while (true)
-        {
-          memset(server_msg, 0, sizeof(server_msg));
-          ssize_t byte_count = recv_message(sockfd, server_msg, sizeof(server_msg));
-          if (strlen(server_msg) != 0)
-          {
-            printf("I am SUT-One, message from server: %s\n", server_msg);
-          }
-        }
-        // Put task back into queue once finished
-        usleep(1000 * 10000);
         pthread_mutex_lock(&m);
-        queue_insert_tail(&task_ready_queue, node_to_enqueue_back);
-
-        setcontext(&task_to_enqueue_back->threadcontext);
+        ssize_t byte_count = recv_message(sockfd, server_msg, sizeof(server_msg));
         pthread_mutex_unlock(&m);
+      }
+      else if (new_task_io->function_number == 0) // close
+      {
+        kill(port_number, SIGKILL);
       }
       else
       {
         continue;
       }
+      // Put task back into queue once finished
+      usleep(1000 * 1000);
+      pthread_mutex_lock(&m);
+      queue_insert_tail(&task_ready_queue, node_to_enqueue_back);
+
+      setcontext(&task_to_enqueue_back->threadcontext);
+      pthread_mutex_unlock(&m);
     }
   }
 }
 
 void sut_init()
 {
-
   numthreads = 0;
   io_numthreads = 0;
   pthread_mutex_lock(&m);
@@ -266,7 +264,7 @@ void sut_write(char *buf, int size)
 
   // Create new node for the wait queue
   iothread *new_io_thread = &(iothreadarr[io_numthreads]);
-  new_io_thread->function_number = 1;
+  new_io_thread->function_number = 2;
   new_io_thread->buffer = buf;
   new_io_thread->size = size;
 
@@ -282,6 +280,33 @@ void sut_write(char *buf, int size)
 
 char *sut_read()
 {
+  memset(server_msg, 0, sizeof(server_msg));
+  pthread_mutex_lock(&m);
+  threaddesc *current = (threaddesc *)queue_peek_front(&task_ready_queue)->data;
+  struct queue_entry *c_exec_new_node = queue_new_node(current);
+  pthread_mutex_unlock(&m);
+
+  iothread *new_io_thread = &(iothreadarr[io_numthreads]);
+  new_io_thread->function_number = 1;
+  new_io_thread->buffer = "";
+  new_io_thread->size = 0;
+
+  struct queue_entry *new_io_node = queue_new_node(new_io_thread);
+  pthread_mutex_lock(&m);
+  io_numthreads++;
+  queue_insert_tail(&wait_queue, new_io_node);
+  queue_insert_tail(&wait_queue, c_exec_new_node);
+  pthread_mutex_unlock(&m);
+  while (strlen(server_msg) == 0)
+  {
+    continue;
+  }
+  return server_msg;
+}
+
+void sut_close()
+{
+
   pthread_mutex_lock(&m);
   threaddesc *current = (threaddesc *)queue_peek_front(&task_ready_queue)->data;
   struct queue_entry *c_exec_new_node = queue_new_node(current);
