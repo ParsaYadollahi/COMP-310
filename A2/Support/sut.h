@@ -13,6 +13,13 @@ typedef struct __threaddesc
   ucontext_t threadcontext;
 } threaddesc;
 
+typedef struct __iothread
+{
+  int function_number; // 1 = write, 0 = read
+  char *buffer;
+  int size;
+} iothread;
+
 extern threaddesc threadarr[MAX_THREADS];
 extern threaddesc *current_task;
 extern int numthreads, curthread;

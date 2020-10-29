@@ -28,10 +28,11 @@
 typedef void (*sut_task_f)();
 struct queue task_ready_queue;
 struct queue wait_queue;
-int numthreads, curthread;
+int numthreads, curthread, io_numthreads;
 ucontext_t parent;
 threaddesc threadarr[MAX_THREADS];
 threaddesc *task_description;
+iothread iothreadarr[MAX_THREADS];
 
 static pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
 pthread_t c_exec_thread;
@@ -70,7 +71,7 @@ void hello1()
   sut_open(destination, port_number);
   for (i = 0; i < 3; i++)
   {
-    sprintf(sbuf, "echo \"WHATS GOOOOOOOOOOD\"\n");
+    sprintf(sbuf, "ls\n");
     sut_write(sbuf, strlen(sbuf));
     sut_yield();
   }
@@ -78,7 +79,7 @@ void hello1()
   sut_exit();
 }
 
-void *c_exec_ftn(void *args)
+void *c_exec_ftn()
 {
   while (true)
   {
@@ -86,27 +87,50 @@ void *c_exec_ftn(void *args)
     if (queue_not_empty(&task_ready_queue) == 1)
     {
       pthread_mutex_lock(&m);
-      threaddesc *new_task = (threaddesc *)queue_peek_front(&task_ready_queue)->data;
+      threaddesc *new_task_c = (threaddesc *)queue_peek_front(&task_ready_queue)->data;
+      printf("C %d\n", new_task_c->threadid);
       pthread_mutex_unlock(&m);
+      usleep(1000 * 1000);
 
-      swapcontext(&parent, &new_task->threadcontext);
+      swapcontext(&parent, &new_task_c->threadcontext);
     }
     else
     {
-      usleep(1000 * 1000);
+      continue;
     }
   }
 }
 
-void *i_exec_ftn(void *args)
+void *i_exec_ftn()
 {
   while (true)
   {
-    pthread_mutex_lock(&m);
-    usleep(1000 * 1000);
-    pthread_mutex_unlock(&m);
-    usleep(1000 * 10000);
-    break;
+    if (queue_not_empty(&wait_queue) == 1)
+    {
+      pthread_mutex_lock(&m);
+      iothread *new_task_io = (iothread *)queue_pop_head(&wait_queue)->data;
+      struct queue_entry *task_to_enqueue_back = queue_pop_head(&wait_queue);
+      pthread_mutex_unlock(&m);
+      if (new_task_io->function_number == 1) // write function
+      {
+        char server_msg[BUFSIZE] = {0};
+        send_message(sockfd, new_task_io->buffer, new_task_io->size);
+        ssize_t byte_count = recv_message(sockfd, server_msg, sizeof(server_msg));
+        printf("%s\n", server_msg);
+      }
+      else if (new_task_io->function_number == 0) // read function
+      {
+        printf("--REAAAD--\n");
+      }
+      usleep(1000 * 10000);
+      pthread_mutex_lock(&m);
+      queue_insert_tail(&task_ready_queue, task_to_enqueue_back);
+      pthread_mutex_unlock(&m);
+    }
+    else
+    {
+      continue;
+    }
   }
 }
 
@@ -114,10 +138,14 @@ void sut_init()
 {
 
   numthreads = 0;
+  io_numthreads = 0;
   pthread_mutex_lock(&m);
 
   task_ready_queue = queue_create();
   queue_init(&task_ready_queue);
+
+  wait_queue = queue_create();
+  queue_init(&wait_queue);
 
   pthread_mutex_unlock(&m);
 
@@ -183,8 +211,10 @@ void sut_shutdown()
   pthread_join(c_exec_thread, NULL);
   pthread_join(i_exec_thread, NULL);
   pthread_cancel(c_exec_thread);
+  pthread_cancel(i_exec_thread);
 }
 
+// Runs on c_exec
 void sut_open(char *dest, int port)
 {
   if (connect_to_server(dest, port, &sockfd) < 0)
@@ -199,10 +229,28 @@ void sut_open(char *dest, int port)
 
 void sut_write(char *buf, int size)
 {
-  char server_msg[BUFSIZE] = {0};
-  send_message(sockfd, buf, size);
-  ssize_t byte_count = recv_message(sockfd, server_msg, sizeof(server_msg));
-  printf("%s\n", server_msg);
+
+  pthread_mutex_lock(&m);
+  threaddesc *current = (threaddesc *)queue_peek_front(&task_ready_queue)->data;
+  struct queue_entry *new_node = queue_new_node(current);
+  pthread_mutex_unlock(&m);
+
+  iothread *new_io_thread = &(iothreadarr[io_numthreads]);
+  new_io_thread->function_number = 1;
+  new_io_thread->buffer = buf;
+  new_io_thread->size = size;
+
+  struct queue_entry *new_io_node = queue_new_node(new_io_thread);
+
+  usleep(1000 * 1000);
+  pthread_mutex_lock(&m);
+  queue_insert_tail(&wait_queue, new_io_node);
+  queue_insert_tail(&wait_queue, new_node);
+  pthread_mutex_unlock(&m);
+}
+
+char *sut_read()
+{
 }
 
 int main()
