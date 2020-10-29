@@ -10,6 +10,7 @@ void hello1()
   for (i = 0; i < 10; i++)
   {
     str = sut_read();
+    printf("TEST FILE %s\n", str);
     if (strlen(str) != 0)
       printf("I am SUT-One, message from server: %s\n", str);
     else

@@ -127,6 +127,7 @@ void *i_exec_ftn()
   {
     if (queue_not_empty(&wait_queue) == 1)
     {
+      printf("INSIDE\n");
       pthread_mutex_lock(&m);
       iothread *new_task_io = (iothread *)queue_pop_head(&wait_queue)->data;
       struct queue_entry *node_to_enqueue_back = queue_pop_head(&wait_queue);
@@ -285,6 +286,7 @@ char *sut_read()
   threaddesc *current = (threaddesc *)queue_peek_front(&task_ready_queue)->data;
   struct queue_entry *c_exec_new_node = queue_new_node(current);
   pthread_mutex_unlock(&m);
+  // makecontext(&(current->threadcontext), current->threadfunc, 0);
 
   iothread *new_io_thread = &(iothreadarr[io_numthreads]);
   new_io_thread->function_number = 1;
@@ -297,6 +299,7 @@ char *sut_read()
   queue_insert_tail(&wait_queue, new_io_node);
   queue_insert_tail(&wait_queue, c_exec_new_node);
   pthread_mutex_unlock(&m);
+
   while (strlen(server_msg) == 0)
   {
     continue;
