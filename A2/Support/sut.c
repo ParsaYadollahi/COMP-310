@@ -44,6 +44,12 @@ int sockfd;
 char *destination;
 int port_number;
 
+/**
+ *  Function where c-exec thread works
+ *
+ *  @params:    NONE
+ *  @return:    VOID
+ */
 void *c_exec_ftn()
 {
   while (true)
@@ -66,6 +72,12 @@ void *c_exec_ftn()
   }
 }
 
+/**
+ *  Function where i-exec thread works
+ *
+ *  @params:    NONE
+ *  @return:    VOID
+ */
 void *i_exec_ftn()
 {
   while (true)
@@ -100,7 +112,7 @@ void *i_exec_ftn()
       {
         kill(port_number, SIGKILL);
       }
-      else if (new_task_io->function_number == -1)
+      else if (new_task_io->function_number == -1) // Open
       {
         if (connect_to_server(destination, port_number, &sockfd) < 0)
         {
@@ -119,6 +131,13 @@ void *i_exec_ftn()
   }
 }
 
+/**
+ *  You can use this function to perform any
+ *  initialization (such as creating your kernel level threads).
+ *
+ *  @params:    NONE
+ *  @return:    VOID
+ */
 void sut_init()
 {
 
@@ -138,6 +157,18 @@ void sut_init()
   pthread_create(&i_exec_thread, NULL, i_exec_ftn, &m);
 }
 
+/**
+ *  Called by the user of your library in order
+ *  to add a new task which should be scheduled
+ *    to run on your C-Exec thread.
+ *
+ *  @params:
+ *    fn:            function the user would like to run in the task.
+ *  @return:
+ *    True:          Task created successfully
+ *    False:         Task created unsuccessfully
+ *
+ */
 bool sut_create(sut_task_f fn)
 {
   if (numthreads <= 15)
@@ -165,9 +196,21 @@ bool sut_create(sut_task_f fn)
     queue_insert_tail(&task_ready_queue, new_node);
 
     pthread_mutex_unlock(&m);
+    return 1;
+  }
+  else
+  {
+    return 0;
   }
 }
 
+/**
+ *  The state/context of the currently running task should be saved and rescheduled to be resumed
+ *  later. The C-Exec thread should be instructed to schedule the next task in its queue of ready task.
+ *
+ *  @params:    NONE
+ *  @return:    VOID
+ */
 void sut_yield()
 {
   pthread_mutex_lock(&m);
@@ -185,12 +228,27 @@ void sut_yield()
   swapcontext(&old_task->threadcontext, &new_task->threadcontext);
 }
 
+/**
+ *  The state/context of the currently running task
+ *  should be destroyed – you should not resume this task again later
+ *
+ *  @params:    NONE
+ *  @return:    VOID
+ */
 void sut_exit()
 {
-  threaddesc *last_task = (threaddesc *)queue_peek_front(&task_ready_queue)->data;
+  threaddesc *last_task = (threaddesc *)queue_pop_head(&task_ready_queue)->data;
   setcontext(&last_task->threadcontext);
 }
 
+/**
+ *  Done adding tasks and would like to wait for the
+ *  currently running tasks to finish and then clean
+ *  up any internal library state.
+ *
+ *  @params:    NONE
+ *  @return:    VOID
+ */
 void sut_shutdown()
 {
   pthread_join(c_exec_thread, NULL);
@@ -199,7 +257,17 @@ void sut_shutdown()
   pthread_cancel(i_exec_thread);
 }
 
-// Runs on c_exec
+/**
+ *  When called, the I-Exec thread should be
+ *  instructed to open a TCP socket connection
+ *  to the address specified by dest on port port
+ *
+ *  @params:
+ *    dest:      Server destination.
+ *    port:      Port number.
+ *
+ *  @return:    VOID
+ */
 void sut_open(char *dest, int port)
 {
 
@@ -222,6 +290,14 @@ void sut_open(char *dest, int port)
   pthread_mutex_unlock(&m);
 }
 
+/**
+ *  The I-Exec thread should be instructed
+ *  to write size bytes from buf to the socket
+ *  associated with the current task.
+ *
+ *  @params:    NONE
+ *  @return:    VOID
+ */
 void sut_write(char *buf, int size)
 {
 
@@ -246,6 +322,16 @@ void sut_write(char *buf, int size)
   pthread_mutex_unlock(&m);
 }
 
+/**
+ *  The I-Exec thread should be instructed
+ *  to read from the task’s associated socket
+ *  until there is no more data to read.
+ *
+ *  @params:    NONE
+ *
+ *  @return: received output from the
+ *           server - String (char*)
+ */
 char *sut_read()
 {
   memset(server_msg, 0, sizeof(server_msg));
@@ -272,6 +358,13 @@ char *sut_read()
   return server_msg;
 }
 
+/**
+ *  the I-Exec thread should close
+ *  the socket associated with the current task.
+ *
+ *  @params:    NONE
+ *  @return:    NONE
+ */
 void sut_close()
 {
 
