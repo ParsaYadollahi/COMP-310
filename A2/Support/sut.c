@@ -59,7 +59,6 @@ void *c_exec_ftn()
     {
       pthread_mutex_lock(&m);
       threaddesc *new_task_c = (threaddesc *)queue_peek_front(&task_ready_queue)->data;
-      printf("C %d\n", new_task_c->threadid);
       pthread_mutex_unlock(&m);
       usleep(1000 * 1000);
 
@@ -174,7 +173,6 @@ bool sut_create(sut_task_f fn)
   if (numthreads <= 15)
   {
 
-    printf("sut_create\n");
     task_description = &(threadarr[numthreads]);
 
     getcontext(&(task_description->threadcontext));
@@ -215,13 +213,16 @@ void sut_yield()
 {
   pthread_mutex_lock(&m);
 
+  // Remove top fo queue
   struct queue_entry *old_node = queue_pop_head(&task_ready_queue);
   threaddesc *old_task = (threaddesc *)old_node->data;
 
+  // Insert at the bottom of queue
   queue_insert_tail(&task_ready_queue, old_node);
   pthread_mutex_unlock(&m);
 
   pthread_mutex_lock(&m);
+  // Go to the task in the queue
   threaddesc *new_task = (threaddesc *)queue_peek_front(&task_ready_queue)->data;
   pthread_mutex_unlock(&m);
 
@@ -251,12 +252,17 @@ void sut_exit()
  */
 void sut_shutdown()
 {
+  // Wait for both process to finish
   pthread_join(c_exec_thread, NULL);
   pthread_join(i_exec_thread, NULL);
+  // Cancel them - make sure they done
   pthread_cancel(c_exec_thread);
   pthread_cancel(i_exec_thread);
 }
 
+////////////////////////
+// IO THREAD
+////////////////////////
 /**
  *  When called, the I-Exec thread should be
  *  instructed to open a TCP socket connection
@@ -275,16 +281,20 @@ void sut_open(char *dest, int port)
   port_number = port;
 
   pthread_mutex_lock(&m);
+  // Peek at top of queue since well remove it later
   threaddesc *current = (threaddesc *)queue_peek_front(&task_ready_queue)->data;
+  // create a new node for the wait queue
   struct queue_entry *c_exec_new_node = queue_new_node(current);
   pthread_mutex_unlock(&m);
   iothread *new_io_thread = &(iothreadarr[io_numthreads]);
+  // FIll up the struct
   new_io_thread->function_number = -1;
   new_io_thread->buffer = "";
   new_io_thread->size = 0;
   struct queue_entry *new_io_node = queue_new_node(new_io_thread);
   pthread_mutex_lock(&m);
   io_numthreads++;
+  // Insert both io and prev task to the Wait queue - going tu put task back into task queue
   queue_insert_tail(&wait_queue, new_io_node);
   queue_insert_tail(&wait_queue, c_exec_new_node);
   pthread_mutex_unlock(&m);
@@ -302,7 +312,9 @@ void sut_write(char *buf, int size)
 {
 
   pthread_mutex_lock(&m);
+  // Peek at top of queue since well remove it later
   threaddesc *current = (threaddesc *)queue_peek_front(&task_ready_queue)->data;
+  // create a new node for the wait queue
   struct queue_entry *c_exec_new_node = queue_new_node(current);
   pthread_mutex_unlock(&m);
 
@@ -317,6 +329,7 @@ void sut_write(char *buf, int size)
   usleep(1000 * 1000);
   pthread_mutex_lock(&m);
   io_numthreads++;
+  // Insert both io and prev task to the Wait queue - going tu put task back into task queue
   queue_insert_tail(&wait_queue, new_io_node);
   queue_insert_tail(&wait_queue, c_exec_new_node);
   pthread_mutex_unlock(&m);
@@ -336,7 +349,9 @@ char *sut_read()
 {
   memset(server_msg, 0, sizeof(server_msg));
   pthread_mutex_lock(&m);
+  // Peek at top of queue since well remove it later
   threaddesc *current = (threaddesc *)queue_peek_front(&task_ready_queue)->data;
+  // create a new node for the wait queue
   struct queue_entry *c_exec_new_node = queue_new_node(current);
   pthread_mutex_unlock(&m);
 
@@ -348,6 +363,7 @@ char *sut_read()
   struct queue_entry *new_io_node = queue_new_node(new_io_thread);
   pthread_mutex_lock(&m);
   io_numthreads++;
+  // Insert both io and prev task to the Wait queue - going tu put task back into task queue
   queue_insert_tail(&wait_queue, new_io_node);
   queue_insert_tail(&wait_queue, c_exec_new_node);
   pthread_mutex_unlock(&m);
@@ -369,7 +385,9 @@ void sut_close()
 {
 
   pthread_mutex_lock(&m);
+  // Peek at top of queue since well remove it later
   threaddesc *current = (threaddesc *)queue_peek_front(&task_ready_queue)->data;
+  // create a new node for the wait queue
   struct queue_entry *c_exec_new_node = queue_new_node(current);
   pthread_mutex_unlock(&m);
   iothread *new_io_thread = &(iothreadarr[io_numthreads]);
@@ -379,6 +397,7 @@ void sut_close()
   struct queue_entry *new_io_node = queue_new_node(new_io_thread);
   pthread_mutex_lock(&m);
   io_numthreads++;
+  // Insert both io and prev task to the Wait queue - going tu put task back into task queue
   queue_insert_tail(&wait_queue, new_io_node);
   queue_insert_tail(&wait_queue, c_exec_new_node);
   pthread_mutex_unlock(&m);

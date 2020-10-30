@@ -1,40 +1,28 @@
 # .DEFAULT_GOAL=alil
 
 CC=gcc
-
-sut:
-	@clear
-	@rm -rf a.out
-	@$(CC) sut.c a1_lib.c -l pthread && ./a.out
-
-sut_clean:
-	@clear
-	@rm -rf a.out
-	@rm -rf sut.c
-	@vim sut.c
-	@$(CC) sut.c a1_lib.c -l pthread && ./a.out
+ThreadLib=pthread
 
 test1:
-	@clear
-	@rm -rf a.out
-	@gcc test1.c sut.c -l pthread
+	@$(CC) test1.c sut.c a1_lib.c -l $(ThreadLib)
+	./a.out
 
 test2:
-	@clear
-	@rm -rf a.out
-	@gcc test2.c sut.c -l pthread
+	@$(CC) test2.c sut.c a1_lib.c -l $(ThreadLib)
+	./a.out
 
 test3:
-	@clear
-	@rm -rf a.out
-	@gcc test3.c sut.c -l pthread
+	@$(CC) test3.c sut.c a1_lib.c -l $(ThreadLib)
+	./a.out
 
 test4:
-	@clear
-	@rm -rf a.out
-	@gcc test4.c sut.c a1_lib.c -l pthread
+	@$(CC) test4.c sut.c a1_lib.c -l $(ThreadLib)
+	./a.out
 
 test5:
+	@$(CC) test5.c sut.c a1_lib.c -l $(ThreadLib)
+	./a.out
+
+clean:
 	@clear
 	@rm -rf a.out
-	@gcc test5.c sut.c -l pthread
