@@ -41,8 +41,8 @@ pthread_t i_exec_thread;
 
 char server_msg[BUFSIZE] = {0};
 int sockfd;
-char *destination = "0.0.0.0";
-int port_number = 8088;
+char *destination;
+int port_number;
 
 void *c_exec_ftn()
 {
@@ -99,6 +99,17 @@ void *i_exec_ftn()
       else if (new_task_io->function_number == 0) // close
       {
         kill(port_number, SIGKILL);
+      }
+      else if (new_task_io->function_number == -1)
+      {
+        if (connect_to_server(destination, port_number, &sockfd) < 0)
+        {
+          fprintf(stderr, "oops no connection!\n");
+        }
+        else
+        {
+          printf("Connected\n");
+        }
       }
       else
       {
@@ -191,14 +202,24 @@ void sut_shutdown()
 // Runs on c_exec
 void sut_open(char *dest, int port)
 {
-  if (connect_to_server(dest, port, &sockfd) < 0)
-  {
-    fprintf(stderr, "oops no connection!\n");
-  }
-  else
-  {
-    printf("Connected\n");
-  }
+
+  destination = dest;
+  port_number = port;
+
+  pthread_mutex_lock(&m);
+  threaddesc *current = (threaddesc *)queue_peek_front(&task_ready_queue)->data;
+  struct queue_entry *c_exec_new_node = queue_new_node(current);
+  pthread_mutex_unlock(&m);
+  iothread *new_io_thread = &(iothreadarr[io_numthreads]);
+  new_io_thread->function_number = -1;
+  new_io_thread->buffer = "";
+  new_io_thread->size = 0;
+  struct queue_entry *new_io_node = queue_new_node(new_io_thread);
+  pthread_mutex_lock(&m);
+  io_numthreads++;
+  queue_insert_tail(&wait_queue, new_io_node);
+  queue_insert_tail(&wait_queue, c_exec_new_node);
+  pthread_mutex_unlock(&m);
 }
 
 void sut_write(char *buf, int size)
