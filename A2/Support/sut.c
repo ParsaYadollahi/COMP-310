@@ -16,6 +16,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <signal.h>
 
 #include "a1_lib.h"
 #include "sut.h"
@@ -94,6 +95,10 @@ void *i_exec_ftn()
 
         setcontext(&task_to_enqueue_back->threadcontext);
         pthread_mutex_unlock(&m);
+      }
+      else if (new_task_io->function_number == 0) // close
+      {
+        kill(port_number, SIGKILL);
       }
       else
       {
