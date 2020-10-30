@@ -43,61 +43,6 @@ int sockfd;
 char *destination = "0.0.0.0";
 int port_number = 8088;
 
-void f1()
-{
-  for (int i = 0; i < 5; i++)
-  {
-    usleep(1000 * 1000);
-    printf("Hello world!, this is SUT-One \n");
-    sut_yield();
-  }
-  sut_exit();
-}
-
-void f2()
-{
-  for (int i = 0; i < 5; i++)
-  {
-    usleep(1000 * 500);
-    printf("Hello world!, this is SUT-Two \n");
-    sut_yield();
-  }
-  sut_exit();
-}
-
-void f_io_1()
-{
-  int i;
-  char sbuf[128];
-  sut_open(destination, port_number);
-  for (i = 0; i < 3; i++)
-  {
-    sprintf(sbuf, "ls\n");
-    sut_write(sbuf, strlen(sbuf));
-    sut_yield();
-  }
-  // sut_close();
-  sut_exit();
-}
-
-void f_io_2()
-{
-  int i;
-  char *str;
-  // sut_open(HOST, PORT);
-  for (i = 0; i < 10; i++)
-  {
-    str = sut_read();
-    if (strlen(str) != 0)
-      printf("I am SUT-One, message from server: %s\n", str);
-    else
-      printf("ERROR!, empty message received \n");
-    sut_yield();
-  }
-  // sut_close()
-  sut_exit();
-}
-
 void *c_exec_ftn()
 {
   while (true)
