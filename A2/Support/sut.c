@@ -301,12 +301,21 @@ char *sut_read()
   return server_msg;
 }
 
-// int main()
-// {
-//   sut_init();
-//   sut_create(f1);
-//   sut_create(f2);
-//   sut_create(f_io_1);
-//   sut_create(f_io_2);
-//   sut_shutdown();
-// }
+void sut_close()
+{
+
+  pthread_mutex_lock(&m);
+  threaddesc *current = (threaddesc *)queue_peek_front(&task_ready_queue)->data;
+  struct queue_entry *c_exec_new_node = queue_new_node(current);
+  pthread_mutex_unlock(&m);
+  iothread *new_io_thread = &(iothreadarr[io_numthreads]);
+  new_io_thread->function_number = 0;
+  new_io_thread->buffer = "";
+  new_io_thread->size = 0;
+  struct queue_entry *new_io_node = queue_new_node(new_io_thread);
+  pthread_mutex_lock(&m);
+  io_numthreads++;
+  queue_insert_tail(&wait_queue, new_io_node);
+  queue_insert_tail(&wait_queue, c_exec_new_node);
+  pthread_mutex_unlock(&m);
+}
