@@ -7,6 +7,7 @@ void hello1()
   for (i = 0; i < 100; i++)
   {
     printf("Hello world!, this is SUT-One \n");
+    printf("%d\n", i);
     sut_yield();
   }
   sut_exit();
