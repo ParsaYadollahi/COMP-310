@@ -194,6 +194,9 @@ void *allocate_pBrk(int size)
   //	TODO: 	Allocate memory by incrementing the Program Break by calling sbrk() or brk()
   //	Hint:	Getting an exact "size" of memory might not be the best idea. Why?
   //			Also, if you are getting a larger memory, you need to put the excess in the free list
+  newBlock = sbrk(0);
+  excessSize = size + sizeof(newBlock);
+
   if (size == 0)
     return (NULL);
 
