@@ -25,7 +25,13 @@
 /* Definitions*/
 #define MAX_TOP_FREE (128 * 1024) // Max top free block size = 128 Kbytes
 //	TODO: Change the Header size if required
+#define WSIZE 4                                                 /* word size (bytes) */
+#define DSIZE 8                                                 /* doubleword size (bytes) */
+#define CHUNKSIZE 16                                            /* initial heap size (bytes) */
+#define MINIMUM 24                                              /* minimum block size */
 #define FREE_BLOCK_HEADER_SIZE 2 * sizeof(char *) + sizeof(int) // Size of the Header in a free memory block
+#define MINIMUM 24
+#define META_SIZE sizeof(block_meta)
 //	TODO: Add constants here
 
 typedef enum //	Policy type definition
@@ -34,7 +40,9 @@ typedef enum //	Policy type definition
   NEXT
 } Policy;
 
+int counter = 0;
 char *sma_malloc_error;
+void *head = NULL;
 void *freeListHead = NULL;            //	The pointer to the HEAD of the doubly linked free memory list
 void *freeListTail = NULL;            //	The pointer to the TAIL of the doubly linked free memory list
 unsigned long totalAllocatedSize = 0; //	Total Allocated memory in Bytes
@@ -42,6 +50,7 @@ unsigned long totalFreeSize = 0;      //	Total Free memory in Bytes in the free 
 Policy currentPolicy = WORST;         //	Current Policy
 //	TODO: Add any global variables here
 
+void print_LL();
 /*
  * =====================================================================================
  *	Public Functions for SMA
@@ -60,6 +69,7 @@ void *sma_malloc(int size)
   void *pMemory = NULL;
 
   // Checks if the free list is empty
+  void *x = freeListHead;
   if (freeListHead == NULL)
   {
     // Allocate memory by increasing the Program Break
@@ -70,6 +80,8 @@ void *sma_malloc(int size)
   {
     // Allocate memory from the free memory list
     pMemory = allocate_freeList(size);
+
+    print_LL();
 
     // If a valid memory could NOT be allocated from the free memory list
     if (pMemory == (void *)-2)
@@ -195,14 +207,13 @@ void *allocate_pBrk(int size)
   //	Hint:	Getting an exact "size" of memory might not be the best idea. Why?
   //			Also, if you are getting a larger memory, you need to put the excess in the free list
   newBlock = sbrk(0);
-  excessSize = size + sizeof(newBlock);
+  excessSize = size + get_blockSize(newBlock);
 
   if (size == 0)
     return (NULL);
 
   //	Allocates the Memory Block
   allocate_block(newBlock, size, excessSize, 0);
-
   return newBlock;
 }
 
@@ -242,17 +253,29 @@ void *allocate_freeList(int size)
  */
 void *allocate_worst_fit(int size)
 {
+
   void *worstBlock = NULL;
   int excessSize;
   int blockFound = 0;
 
   //	TODO: 	Allocate memory by using Worst Fit Policy
   //	Hint:	Start off with the freeListHead and iterate through the entire list to get the largest block
+  int maxSize = size;
+  block_meta *head = freeListHead; /* set head to the beginning of the list */
+  while (head != NULL)             /* Iterate through the entire list to find the largest block*/
+  {
+    if (head->size >= maxSize)
+    {
+      worstBlock = head;
+      blockFound = 1;
+    }
+    head = head->next;
+  }
 
   //	Checks if appropriate block is found.
   if (blockFound)
   {
-    //	Allocates the Memory Block
+    //	Allocates the Memory
     allocate_block(worstBlock, size, excessSize, 1);
   }
   else
@@ -303,6 +326,9 @@ void *allocate_next_fit(int size)
  */
 void allocate_block(void *newBlock, int size, int excessSize, int fromFreeList)
 {
+  block_meta *newB;
+  newB->block = newBlock;
+
   void *excessFreeBlock; //	pointer for any excess free block
   int addFreeBlock;
 
@@ -311,13 +337,16 @@ void allocate_block(void *newBlock, int size, int excessSize, int fromFreeList)
 
   //	TODO: Adjust the condition based on your Head and Tail size (depends on your TAG system)
   //	Hint: Might want to have a minimum size greater than the Head/Tail sizes
-  addFreeBlock = excessSize > FREE_BLOCK_HEADER_SIZE;
+  addFreeBlock = excessSize > MINIMUM;
 
   //	If excess free size is big enough
   if (addFreeBlock)
   {
     //	TODO: Create a free block using the excess memory size, then assign it to the Excess Free Block
 
+    block_meta *free_block;
+    free_block->block = newBlock;
+    free_block->size = size;
     //	Checks if the new block was allocated from the free memory list
     if (fromFreeList)
     {
@@ -327,7 +356,7 @@ void allocate_block(void *newBlock, int size, int excessSize, int fromFreeList)
     else
     {
       //	Adds excess free block to the free list
-      add_block_freeList(excessFreeBlock);
+      add_block_freeList(free_block);
     }
   }
   //	Otherwise add the excess memory to the new block
@@ -365,7 +394,7 @@ void replace_block_freeList(void *oldBlock, void *newBlock)
  * 	Output type:	void
  * 	Description:	Adds a memory block to the the free memory list
  */
-void add_block_freeList(void *block) // same as coalesce()
+void add_block_freeList(block_meta *excessFreeBlock) // same as coalesce()
 {
   //	TODO: 	Add the block to the free list
   //	Hint: 	You could add the free block at the end of the list, but need to check if there
@@ -373,10 +402,34 @@ void add_block_freeList(void *block) // same as coalesce()
   //			Also, you would need to check if merging with the "adjacent" blocks is possible or not.
   //			Merging would be tideous. Check adjacent blocks, then also check if the merged
   //			block is at the top and is bigger than the largest free block allowed (128kB).
+  if (freeListHead == NULL)
+  {
+    // INIT the tail of the list
+    block_meta *tail;  /* Tail of the DDL */
+    tail->next = NULL; /* make tail of DLL point to the first freeblock */
+    tail->count = counter;
+    counter++;
+    tail->free = 1;                 /* set the tag to free */
+    excessFreeBlock->prev = NULL;   /* First free blocks prev is the tail */
+    tail->block = excessFreeBlock;  /* the tail block is the excess free block */
+    freeListHead = excessFreeBlock; /* move the freelisthead pointer to the tail's block pointer */
+    head = tail;                    /* set the current pointer to the same as the tail */
+  }
+  else
+  {
+    block_meta *current = head;
+    current->next = excessFreeBlock; /* the current blocks next points to the block-to-be */
+    excessFreeBlock->prev = current; /* the new block prev is going to point to the prev free block */
+    excessFreeBlock->count = counter;
+    counter++;
+    excessFreeBlock->next = NULL; // next == null
+    excessFreeBlock->free = 1;    // It is a free block [tag]
+    head = excessFreeBlock;       // move the current block to the new block
+  }
 
   //	Updates SMA info
-  totalAllocatedSize -= get_blockSize(block);
-  totalFreeSize += get_blockSize(block);
+  totalAllocatedSize -= get_blockSize(excessFreeBlock->block);
+  totalFreeSize += get_blockSize(excessFreeBlock->block);
 }
 
 /*
@@ -434,3 +487,14 @@ int get_largest_freeBlock()
 * Initially that free block will be head and tail of list. The bloc needs to have tags, and needs a size tag (tells how big it is). For the free list, the block needs prev and next tags - also both blocks need a bit to say if it's allocated or not
 * The blocks are spaces in memory, not a struct. The way you keep track is by updating and accessing tags by moving a pointer around
 */
+
+void print_LL()
+{
+  printf("----Printing_values_in_linkedlist----\n");
+  block_meta *head = freeListHead;
+  while (head != NULL)
+  {
+    printf("%d\n", head->count);
+    head = head->next;
+  }
+}
