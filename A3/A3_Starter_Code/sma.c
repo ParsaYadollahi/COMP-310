@@ -28,9 +28,7 @@
 #define WSIZE 4                                                 /* word size (bytes) */
 #define DSIZE 8                                                 /* doubleword size (bytes) */
 #define CHUNKSIZE 16                                            /* initial heap size (bytes) */
-#define MINIMUM 24                                              /* minimum block size */
 #define FREE_BLOCK_HEADER_SIZE 2 * sizeof(char *) + sizeof(int) // Size of the Header in a free memory block
-#define MINIMUM 24
 #define META_SIZE sizeof(block_meta)
 //	TODO: Add constants here
 
@@ -67,9 +65,7 @@ void print_LL();
 void *sma_malloc(int size)
 {
   void *pMemory = NULL;
-
   // Checks if the free list is empty
-  void *x = freeListHead;
   if (freeListHead == NULL)
   {
     // Allocate memory by increasing the Program Break
@@ -81,11 +77,10 @@ void *sma_malloc(int size)
     // Allocate memory from the free memory list
     pMemory = allocate_freeList(size);
 
-    print_LL();
-
     // If a valid memory could NOT be allocated from the free memory list
     if (pMemory == (void *)-2)
     {
+
       // Allocate memory by increasing the Program Break
       pMemory = allocate_pBrk(size);
     }
@@ -101,6 +96,7 @@ void *sma_malloc(int size)
   // Updates SMA Info
   totalAllocatedSize += size;
 
+  // print_LL();
   return pMemory;
 }
 
@@ -283,7 +279,6 @@ void *allocate_worst_fit(int size)
     //	Assigns invalid address if appropriate block not found in free list
     worstBlock = (void *)-2;
   }
-
   return worstBlock;
 }
 
@@ -326,9 +321,6 @@ void *allocate_next_fit(int size)
  */
 void allocate_block(void *newBlock, int size, int excessSize, int fromFreeList)
 {
-  block_meta *newB;
-  newB->block = newBlock;
-
   void *excessFreeBlock; //	pointer for any excess free block
   int addFreeBlock;
 
@@ -337,17 +329,33 @@ void allocate_block(void *newBlock, int size, int excessSize, int fromFreeList)
 
   //	TODO: Adjust the condition based on your Head and Tail size (depends on your TAG system)
   //	Hint: Might want to have a minimum size greater than the Head/Tail sizes
-  addFreeBlock = excessSize > MINIMUM;
-
+  int minimum;
+  if (freeListHead != NULL)
+  {
+    minimum = get_blockSize(freeListHead);
+  }
+  else
+  {
+    minimum = FREE_BLOCK_HEADER_SIZE;
+  }
+  addFreeBlock = excessSize > minimum;
   //	If excess free size is big enough
   if (addFreeBlock)
   {
     //	TODO: Create a free block using the excess memory size, then assign it to the Excess Free Block
 
+    if (freeListHead != NULL)
+    {
+      puts("---------------HIT---------------\n");
+      printf("-----From free list %d-=------\n", fromFreeList);
+    }
     block_meta *free_block;
-    free_block->block = newBlock;
     free_block->size = size;
+    printf("%d\n", free_block->size);
+    puts("---------------HIT---------------\n");
+    free_block->block = newBlock; // HERE ---------------------------------------------------------------------------------------------------------
     //	Checks if the new block was allocated from the free memory list
+
     if (fromFreeList)
     {
       //	Removes new block and adds the excess free block to the free list
@@ -382,6 +390,15 @@ void allocate_block(void *newBlock, int size, int excessSize, int fromFreeList)
 void replace_block_freeList(void *oldBlock, void *newBlock)
 {
   //	TODO: Replace the old block with the new block
+  block_meta *head = freeListHead;
+  while (head != NULL)
+  {
+    if (head->block == oldBlock)
+    {
+      head->block = newBlock;
+    }
+    head = head->next;
+  }
 
   //	Updates SMA info
   totalAllocatedSize += (get_blockSize(oldBlock) - get_blockSize(newBlock));
@@ -402,6 +419,10 @@ void add_block_freeList(block_meta *excessFreeBlock) // same as coalesce()
   //			Also, you would need to check if merging with the "adjacent" blocks is possible or not.
   //			Merging would be tideous. Check adjacent blocks, then also check if the merged
   //			block is at the top and is bigger than the largest free block allowed (128kB).
+  // if (freeListHead != NULL)
+  // {
+  //   puts("NULL\n");
+  // }
   if (freeListHead == NULL)
   {
     // INIT the tail of the list
@@ -417,6 +438,7 @@ void add_block_freeList(block_meta *excessFreeBlock) // same as coalesce()
   }
   else
   {
+    puts("----------hit---------");
     block_meta *current = head;
     current->next = excessFreeBlock; /* the current blocks next points to the block-to-be */
     excessFreeBlock->prev = current; /* the new block prev is going to point to the prev free block */
