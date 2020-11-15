@@ -15,9 +15,13 @@ int main(int argc, char *argv[])
   puts("Test 1: Hole finding test...");
 
   // Allocating 32 kbytes of memory..
-  c[0] = (char *)sma_malloc(1024);
-  // sprintf(str, "c[i]: %p", c[i]);
-  // puts(str);
+  for (i = 0; i < 5; i++)
+  {
+    c[i] = (char *)sma_malloc(1024);
+    // sprintf(str, "c[i]: %p", c[i]);
+    // puts(str);
+  }
+  print_LL();
   printf("done\n");
   // sprintf(str, "c[i]: %p", c[i]);
   // puts(str);

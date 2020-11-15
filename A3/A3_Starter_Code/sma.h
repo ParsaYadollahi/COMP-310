@@ -34,7 +34,6 @@ typedef struct block_meta
   int size;
   struct block_meta *next;
   struct block_meta *prev;
-  int count;
   int free;
   void *block;
 } block_meta;
@@ -51,8 +50,8 @@ static void *allocate_pBrk(int size);
 static void *allocate_freeList(int size);
 static void *allocate_worst_fit(int size);
 static void *allocate_next_fit(int size);
-static void allocate_block(void *newBlock, int size, int excessSize, int fromFreeList);
-static void replace_block_freeList(void *oldBlock, void *newBlock);
+static void allocate_block(block_meta *excessFreeBlock, int size, int excessSize, int fromFreeList);
+static void replace_block_freeList(block_meta *oldBlock, block_meta *newBlock);
 static void add_block_freeList(block_meta *excessFreeBlock);
 static void remove_block_freeList(void *block);
 static int get_blockSize(void *ptr);
