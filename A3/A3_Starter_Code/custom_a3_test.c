@@ -22,6 +22,7 @@ int main(int argc, char *argv[])
     // puts(str);
   }
   print_LL();
+  sma_free(c[2]);
   printf("done\n");
   // sprintf(str, "c[i]: %p", c[i]);
   // puts(str);

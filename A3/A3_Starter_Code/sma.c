@@ -29,6 +29,7 @@
 #define META_SIZE sizeof(block_meta)
 //	TODO: Add constants here
 #define META_SIZE sizeof(struct block_meta)
+#define PROGRAM_BREAK sbrk(0)
 
 typedef enum //	Policy type definition
 {
@@ -86,13 +87,16 @@ void *sma_malloc(int size)
   // Validates memory allocation
   if (pMemory < 0 || pMemory == NULL)
   {
+    puts("- RETURNING NULL - \n");
     sma_malloc_error = "Error: Memory allocation failed!";
     return NULL;
   }
 
   // Updates SMA Info
   totalAllocatedSize += size;
-
+  puts("- NOT RETURNING NULL - \n");
+  printf("---ProgramBreak = %d\n", pMemory);
+  printf("---sbrk(0) = %d\n", sbrk(0));
   return pMemory;
 }
 
@@ -110,7 +114,7 @@ void sma_free(void *ptr)
     puts("Error: Attempting to free NULL!");
   }
   //	Checks if the ptr is beyond Program Break
-  else if (ptr > sbrk(0))
+  else if (ptr > PROGRAM_BREAK)
   {
     puts("Error: Attempting to free unallocated space!");
   }
@@ -201,16 +205,15 @@ void *allocate_pBrk(int size)
   //	TODO: 	Allocate memory by incrementing the Program Break by calling sbrk() or brk()
   //	Hint:	Getting an exact "size" of memory might not be the best idea. Why?
   //			Also, if you are getting a larger memory, you need to put the excess in the free list
-  excessSize = size + sizeof(newBlock);
+  excessSize = size - sizeof(newBlock);
 
-  block = sbrk(0);
-  block->block = newBlock; // Pointer to the current break to the heap
-
-  void *request = sbrk(size + META_SIZE + excessSize); // request this much space in the heap
-  if (request == (void *)-1)
+  block = PROGRAM_BREAK;
+  newBlock = sbrk(size - sizeof(newBlock)); // request this much space in the heap
+  if (block->block == (void *)-1)
   {
     return NULL; // sbrk failed.
   }
+  block->block = newBlock; // Pointer to the current break to the heap
 
   if (size == 0)
     return (NULL);
@@ -261,34 +264,35 @@ void *allocate_worst_fit(int size)
   void *worstBlock = NULL;
   int excessSize;
   int blockFound = 0;
+  int max = freeListHeadBlock->size;
 
   block_meta *head = freeListHeadBlock; /* set head to the beginning of the list */
-  block_meta *worst = sbrk(0);
-
-  void *request = sbrk(size + META_SIZE);
-  if (request == (void *)-1)
-  {
-    return NULL; // sbrk failed.
-  }
+  block_meta *worst = PROGRAM_BREAK;
 
   //	TODO: 	Allocate memory by using Worst Fit Policy
   //	Hint:	Start off with the freeListHead and iterate through the entire list to get the largest block
   while (head != NULL) /* Iterate through the entire list to find the largest block*/
   {
-    if (head->size >= size)
+
+    if (head->size >= max)
     {
+      printf("%d----------HIT----------%d\n", max, head->size);
       worstBlock = head->block;
       blockFound = 1;
+      max = head->size;
     }
     head = head->next;
   }
+  excessSize = size - max;
 
-  worst->block = worstBlock;
+  worst->block = sbrk(max);
+  memcpy(worst->block, worstBlock, max);
 
   //	Checks if appropriate block is found.
   if (blockFound)
   {
     //	Allocates the Memory
+
     allocate_block(worst, size, excessSize, 1);
   }
   else
@@ -352,44 +356,40 @@ void allocate_block(block_meta *newBlock, int size, int excessSize, int fromFree
 
   if (freeListHead != NULL)
   {
-    minimum = get_blockSize(freeListHead);
+    minimum = current->size;
   }
   else
   {
     minimum = FREE_BLOCK_HEADER_SIZE;
   }
+
+  printf("excessSize = %d\n", excessSize);
+  printf("min = %d\n", minimum);
   addFreeBlock = excessSize > minimum;
   //	If excess free size is big enough
-  if (addFreeBlock)
+  if (addFreeBlock) // Want to add a free block
   {
     //	TODO: Create a free block using the excess memory size, then assign it to the Excess Free Block
+    block_meta *excess_free_block = PROGRAM_BREAK;
 
-    // if (freeListHead != NULL)
-    // {
-    //   puts("---------------HIT free list head = null---------------\n");
-    //   printf("-----From free list %d--------\n", fromFreeList);
-    // }
-    block_meta *free_block = sbrk(0);
-    void *request = sbrk(excessSize + META_SIZE);
-
-    free_block->block = excessFreeBlock;
-    free_block->size = size;
+    excess_free_block->block = excessFreeBlock;
+    excess_free_block->size = excessSize;
 
     //	Checks if the new block was allocated from the free memory list
 
     if (fromFreeList)
     {
-      //	Removes new block and adds the excess free block to the free list
-      replace_block_freeList(newBlock, free_block);
+      //	Removes new block since allocated and adds the excess free block to the free list (i,e splits the free block in allocated and free)
+      replace_block_freeList(newBlock, excess_free_block);
     }
     else
     {
       //	Adds excess free block to the free list
-      add_block_freeList(free_block);
+      add_block_freeList(excess_free_block);
     }
   }
   //	Otherwise add the excess memory to the new block
-  else
+  else // Remove the block from freeList
   {
     //	TODO: Add excessSize to size and assign it to the new Block
 
@@ -416,7 +416,7 @@ void replace_block_freeList(block_meta *oldBlock, block_meta *newBlock)
   {
     if (head->block == oldBlock->block)
     {
-      head->block = newBlock->block;
+      memcpy(oldBlock->block, newBlock->block, newBlock->size);
     }
     head = head->next;
   }
@@ -446,6 +446,7 @@ void add_block_freeList(block_meta *excessFreeBlock) // same as coalesce()
   // }
   if (freeListHead == NULL)
   {
+    void *request = sbrk(excessFreeBlock->size); // Requesting size amount of space in the heap
     // INIT the tail of the list
     excessFreeBlock->next = NULL;
     excessFreeBlock->prev = NULL;
@@ -453,15 +454,6 @@ void add_block_freeList(block_meta *excessFreeBlock) // same as coalesce()
     freeListHead = excessFreeBlock->block;
     freeListHeadBlock = excessFreeBlock;
     current = excessFreeBlock;
-
-    // block_meta *tail; /* Tail of the DDL */
-    // tail = sbrk(0);
-    // tail->next = NULL;              /* make tail of DLL point to the first freeblock */
-    // tail->free = 1;                 /* set the tag to free */
-    // excessFreeBlock->prev = NULL;   /* First free blocks prev is the tail */
-    // tail->block = excessFreeBlock;  /* the tail block is the excess free block */
-    // freeListHead = excessFreeBlock; /* move the freelisthead pointer to the tail's block pointer */
-    // head = tail;                    /* set the current pointer to the same as the tail */
   }
   else
   {
