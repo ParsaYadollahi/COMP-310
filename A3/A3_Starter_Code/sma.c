@@ -524,12 +524,12 @@ int get_largest_freeBlock()
 void print_LL()
 {
   printf("----Printing_values_in_linkedlist----\n");
-  block_meta *head;
-  head->block = freeListHead;
-  while (head->block != NULL)
+  block_meta head;
+  head.block = freeListHead;
+  while (head.block != NULL)
   {
-    printf("%d\n", head->size);
-    head = head->next;
+    printf("%d\n", head.size);
+    head = *(head.next);
     puts("AAAAA\n");
   }
 }
