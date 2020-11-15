@@ -53,8 +53,9 @@ static void *allocate_worst_fit(int size);
 static void *allocate_next_fit(int size);
 static void allocate_block(void *newBlock, int size, int excessSize, int fromFreeList);
 static void replace_block_freeList(void *oldBlock, void *newBlock);
-static void add_block_freeList(block_meta excessFreeBlock);
+static void add_block_freeList(block_meta *excessFreeBlock);
 static void remove_block_freeList(void *block);
 static int get_blockSize(void *ptr);
 static int get_largest_freeBlock();
 //  TODO: Declare any private functions that you intend to add in your code.
+void print_LL();

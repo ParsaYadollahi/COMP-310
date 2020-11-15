@@ -31,8 +31,8 @@
 #define FREE_BLOCK_HEADER_SIZE 2 * sizeof(char *) + sizeof(int) // Size of the Header in a free memory block
 #define META_SIZE sizeof(block_meta)
 //	TODO: Add constants here
-#define MAX_BLOCKS 1024
-static block_meta block_meta_pool[MAX_BLOCKS];
+#define META_SIZE sizeof(struct block_meta)
+
 static int next_block = 0;
 static int prev_block = 0;
 
@@ -44,7 +44,7 @@ typedef enum //	Policy type definition
 
 int counter = 0;
 char *sma_malloc_error;
-block_meta head;                      // pointing to the current head
+block_meta *head;                     // pointing to the current head
 void *freeListHead = NULL;            //	The pointer to the HEAD of the doubly linked free memory list
 void *freeListTail = NULL;            //	The pointer to the TAIL of the doubly linked free memory list
 unsigned long totalAllocatedSize = 0; //	Total Allocated memory in Bytes
@@ -52,7 +52,6 @@ unsigned long totalFreeSize = 0;      //	Total Free memory in Bytes in the free 
 Policy currentPolicy = WORST;         //	Current Policy
 //	TODO: Add any global variables here
 
-void print_LL();
 /*
  * =====================================================================================
  *	Public Functions for SMA
@@ -129,8 +128,8 @@ void sma_free(void *ptr)
   else
   {
     //	Adds the block to the free memory list
-    block_meta ptr_block;
-    ptr_block.block = ptr;
+    block_meta *ptr_block;
+    ptr_block->block = ptr;
     add_block_freeList(ptr_block); // coalesce
   }
 }
@@ -208,12 +207,19 @@ void *allocate_pBrk(int size)
 {
   void *newBlock = NULL;
   int excessSize;
+  block_meta *block;
+  block->block = newBlock;
 
   //	TODO: 	Allocate memory by incrementing the Program Break by calling sbrk() or brk()
   //	Hint:	Getting an exact "size" of memory might not be the best idea. Why?
   //			Also, if you are getting a larger memory, you need to put the excess in the free list
-  newBlock = sbrk(0);
   excessSize = size + get_blockSize(newBlock);
+  newBlock = sbrk(0);                                  // Pointer to the current break to the heap
+  void *request = sbrk(size + META_SIZE + excessSize); // request this much space in the heap
+  if (request == (void *)-1)
+  {
+    return NULL; // sbrk failed.
+  }
 
   if (size == 0)
     return (NULL);
@@ -268,16 +274,16 @@ void *allocate_worst_fit(int size)
   //	TODO: 	Allocate memory by using Worst Fit Policy
   //	Hint:	Start off with the freeListHead and iterate through the entire list to get the largest block
   int maxSize = size;
-  block_meta head; /* set head to the beginning of the list */
-  head.block = freeListHead;
-  while (head.block != NULL) /* Iterate through the entire list to find the largest block*/
+  block_meta *head; /* set head to the beginning of the list */
+  head->block = freeListHead;
+  while (head->block != NULL) /* Iterate through the entire list to find the largest block*/
   {
-    if (head.size >= maxSize)
+    if (head->size >= maxSize)
     {
-      worstBlock = head.block;
+      worstBlock = head->block;
       blockFound = 1;
     }
-    head = *(head.next);
+    head = head->next;
   }
 
   //	Checks if appropriate block is found.
@@ -361,9 +367,10 @@ void allocate_block(void *newBlock, int size, int excessSize, int fromFreeList)
     //   puts("---------------HIT free list head = null---------------\n");
     //   printf("-----From free list %d--------\n", fromFreeList);
     // }
-    block_meta free_block;
-    free_block.size = size;
-    free_block.block = newBlock;
+    block_meta *free_block;
+    free_block = sbrk(size + META_SIZE);
+    free_block->size = size;
+    free_block->block = newBlock;
     //	Checks if the new block was allocated from the free memory list
 
     if (fromFreeList)
@@ -400,15 +407,15 @@ void allocate_block(void *newBlock, int size, int excessSize, int fromFreeList)
 void replace_block_freeList(void *oldBlock, void *newBlock)
 {
   //	TODO: Replace the old block with the new block
-  block_meta head;
-  head.block = freeListHead;
-  while (head.block != NULL)
+  block_meta *head;
+  head->block = freeListHead;
+  while (head->block != NULL)
   {
-    if (head.block == &oldBlock)
+    if (head->block == &oldBlock)
     {
-      head.block = newBlock;
+      head->block = newBlock;
     }
-    head = *(head.next);
+    head = head->next;
   }
 
   //	Updates SMA info
@@ -422,7 +429,7 @@ void replace_block_freeList(void *oldBlock, void *newBlock)
  * 	Output type:	void
  * 	Description:	Adds a memory block to the the free memory list
  */
-void add_block_freeList(block_meta excessFreeBlock) // same as coalesce()
+void add_block_freeList(block_meta *excessFreeBlock) // same as coalesce()
 {
   //	TODO: 	Add the block to the free list
   //	Hint: 	You could add the free block at the end of the list, but need to check if there
@@ -434,35 +441,36 @@ void add_block_freeList(block_meta excessFreeBlock) // same as coalesce()
   // {
   //   puts("NULL\n");
   // }
-
+  puts("\nHIT\n");
   if (freeListHead == NULL)
   {
     // INIT the tail of the list
-    block_meta tail;  /* Tail of the DDL */
-    tail.next = NULL; /* make tail of DLL point to the first freeblock */
-    tail.count = counter;
+    block_meta *tail; /* Tail of the DDL */
+    tail = sbrk(0);
+    tail->next = NULL; /* make tail of DLL point to the first freeblock */
+    tail->count = counter;
     counter++;
-    tail.free = 1;                   /* set the tag to free */
-    excessFreeBlock.prev = NULL;     /* First free blocks prev is the tail */
-    tail.block = &excessFreeBlock;   /* the tail block is the excess free block */
-    freeListHead = &excessFreeBlock; /* move the freelisthead pointer to the tail's block pointer */
-    head = tail;                     /* set the current pointer to the same as the tail */
+    tail->free = 1;                 /* set the tag to free */
+    excessFreeBlock->prev = NULL;   /* First free blocks prev is the tail */
+    tail->block = excessFreeBlock;  /* the tail block is the excess free block */
+    freeListHead = excessFreeBlock; /* move the freelisthead pointer to the tail's block pointer */
+    head = tail;                    /* set the current pointer to the same as the tail */
   }
   else
   {
-    block_meta current = head;
-    current.next = &excessFreeBlock; /* the current blocks next points to the block-to-be */
-    excessFreeBlock.prev = &current; /* the new block prev is going to point to the prev free block */
-    excessFreeBlock.count = counter;
+    block_meta *current = head;
+    current->next = excessFreeBlock; /* the current blocks next points to the block-to-be */
+    excessFreeBlock->prev = current; /* the new block prev is going to point to the prev free block */
+    excessFreeBlock->count = counter;
     counter++;
-    excessFreeBlock.next = NULL; // next == null
-    excessFreeBlock.free = 1;    // It is a free block [tag]
-    head = excessFreeBlock;      // move the current block to the new block
+    excessFreeBlock->next = NULL; // next == null
+    excessFreeBlock->free = 1;    // It is a free block [tag]
+    head = excessFreeBlock;       // move the current block to the new block
   }
 
   //	Updates SMA info
-  totalAllocatedSize -= get_blockSize(excessFreeBlock.block);
-  totalFreeSize += get_blockSize(excessFreeBlock.block);
+  totalAllocatedSize -= get_blockSize(excessFreeBlock->block);
+  totalFreeSize += get_blockSize(excessFreeBlock->block);
 }
 
 /*
@@ -524,12 +532,12 @@ int get_largest_freeBlock()
 void print_LL()
 {
   printf("----Printing_values_in_linkedlist----\n");
-  block_meta head;
-  head.block = freeListHead;
-  while (head.block != NULL)
+  block_meta *head;
+  head->block = freeListHead;
+  while (head->block != NULL)
   {
-    printf("%d\n", head.size);
-    head = *(head.next);
+    printf("%d\n", head->size);
+    head = head->next;
     puts("AAAAA\n");
   }
 }
