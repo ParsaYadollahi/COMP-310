@@ -87,16 +87,12 @@ void *sma_malloc(int size)
   // Validates memory allocation
   if (pMemory < 0 || pMemory == NULL)
   {
-    puts("- RETURNING NULL - \n");
     sma_malloc_error = "Error: Memory allocation failed!";
     return NULL;
   }
 
   // Updates SMA Info
   totalAllocatedSize += size;
-  puts("- NOT RETURNING NULL - \n");
-  printf("---ptr = %d\n", pMemory);
-  printf("---sbrk(0) = %d\n\n", PROGRAM_BREAK);
   return pMemory;
 }
 
@@ -122,6 +118,7 @@ void sma_free(void *ptr)
   {
     //	Adds the block to the free memory list
     block_meta *ptr_block;
+    ptr_block = PROGRAM_BREAK;
     ptr_block->block = ptr;
     add_block_freeList(ptr_block); // coalesce
   }
@@ -428,7 +425,7 @@ void replace_block_freeList(block_meta *oldBlock, block_meta *newBlock)
  * 	Output type:	void
  * 	Description:	Adds a memory block to the the free memory list
  */
-void add_block_freeList(block_meta *excessFreeBlock) // same as coalesce()
+void add_block_freeList(block_meta *excessFreeBlock)
 {
   //	TODO: 	Add the block to the free list
   //	Hint: 	You could add the free block at the end of the list, but need to check if there
@@ -436,10 +433,7 @@ void add_block_freeList(block_meta *excessFreeBlock) // same as coalesce()
   //			Also, you would need to check if merging with the "adjacent" blocks is possible or not.
   //			Merging would be tideous. Check adjacent blocks, then also check if the merged
   //			block is at the top and is bigger than the largest free block allowed (128kB).
-  // if (freeListHead != NULL)
-  // {
-  //   puts("NULL\n");
-  // }
+
   if (freeListHead == NULL)
   {
     void *request = sbrk(excessFreeBlock->size); // Requesting size amount of space in the heap

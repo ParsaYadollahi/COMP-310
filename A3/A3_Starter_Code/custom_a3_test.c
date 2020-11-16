@@ -1,3 +1,25 @@
+/*
+ * =====================================================================================
+ *
+ *	Filename:  		a3_test.c
+ *
+ * 	Description:	Example of testing code of MyMalloc.
+ *
+ *  Version:  		1.0
+ *  Created:  		6/11/2020 9:30:00 AM
+ *  Revised:  		-
+ *  Compiler:  		gcc
+ *
+ *  Authors:  		Devarun Bhattacharya,
+ * 					Mohammad Mushfiqur Rahman
+ *
+ * 	Intructions:	Please address all the "TODO"s in the code below and modify
+ * 					them accordingly. No need to modify anything else, unless you
+ * 					find a bug in the tester! Don't modify the tester to circumvent
+ * 					the bug in your code!
+ * =====================================================================================
+ */
+
 /* Includes */
 #include <unistd.h>
 #include <stdio.h>
@@ -15,17 +37,32 @@ int main(int argc, char *argv[])
   puts("Test 1: Hole finding test...");
 
   // Allocating 32 kbytes of memory..
-  for (i = 0; i < 5; i++)
+  for (i = 0; i < 32; i++)
   {
     c[i] = (char *)sma_malloc(1024);
     // sprintf(str, "c[i]: %p", c[i]);
     // puts(str);
   }
-  print_LL();
-  sma_free(c[0]);
-  printf("done\n");
-  // sprintf(str, "c[i]: %p", c[i]);
+
+  // Now deallocating some of the slots ..to free
+  for (i = 10; i < 18; i++)
+  {
+    sma_free(c[i]);
+    // sprintf(str, "Freeing c[i]: %p", c[i]);
+    // puts(str);
+  }
+
+  // Allocate some storage .. this should go into the freed storage
+  ct = (char *)sma_malloc(5 * 1024);
+  // sprintf(str, "CT : %p", ct);
   // puts(str);
+
+  // Testing if you are finding the available holes
+  if (ct < c[31])
+    puts("\t\t\t\t PASSED\n");
+  else
+    puts("\t\t\t\t FAILED\n");
+  printf("done\n");
 
   // // Now deallocating some of the slots ..to free
   // for (i = 10; i < 18; i++)
