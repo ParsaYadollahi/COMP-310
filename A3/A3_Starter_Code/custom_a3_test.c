@@ -58,6 +58,9 @@ int main(int argc, char *argv[])
   // puts(str);
 
   // Testing if you are finding the available holes
+  print_LL();
+  printf("ct = %d\n", ct);
+  printf("c[31] = %d\n", c[31]);
   if (ct < c[31])
     puts("\t\t\t\t PASSED\n");
   else

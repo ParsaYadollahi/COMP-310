@@ -40,6 +40,7 @@ typedef enum //	Policy type definition
 char *sma_malloc_error;
 block_meta *current;                  // pointing to the current head
 block_meta *freeListHeadBlock;        // The block to the HEAD of the DDL
+block_meta *freeListTailBlock;        // The block to the HEAD of the DDL
 void *freeListHead = NULL;            //	The pointer to the HEAD of the doubly linked free memory list
 void *freeListTail = NULL;            //	The pointer to the TAIL of the doubly linked free memory list
 unsigned long totalAllocatedSize = 0; //	Total Allocated memory in Bytes
@@ -93,6 +94,7 @@ void *sma_malloc(int size)
 
   // Updates SMA Info
   totalAllocatedSize += size;
+  printf("pMemory = %d\n", pMemory);
   return pMemory;
 }
 
@@ -436,22 +438,29 @@ void add_block_freeList(block_meta *excessFreeBlock)
 
   if (freeListHead == NULL)
   {
-    void *request = sbrk(excessFreeBlock->size); // Requesting size amount of space in the heap
+    current = PROGRAM_BREAK;
+    excessFreeBlock->block = sbrk(excessFreeBlock->size); // Requesting size amount of space in the heap
     // INIT the tail of the list
     excessFreeBlock->next = NULL;
     excessFreeBlock->prev = NULL;
     excessFreeBlock->free = 1;
-    freeListHead = excessFreeBlock->block;
+    freeListHead = excessFreeBlock->block; // HEAD of freelist
+    freeListTail = excessFreeBlock->block; // TAIL of freelist
     freeListHeadBlock = excessFreeBlock;
     current = excessFreeBlock;
+    freeListTailBlock = excessFreeBlock;
   }
   else
   {
-    current->next = excessFreeBlock; /* the current blocks next points to the block-to-be */
-    excessFreeBlock->prev = current; /* the new block prev is going to point to the prev free block */
-    excessFreeBlock->next = NULL;    // next == null
-    excessFreeBlock->free = 1;       // It is a free block [tag]
-    current = excessFreeBlock;       // move the current block to the new block
+    printf("\t %d\n", excessFreeBlock);
+    excessFreeBlock->block = sbrk(1016);       // This the issue
+    excessFreeBlock->next = NULL;              // next == null
+    excessFreeBlock->prev = freeListTailBlock; // the new block prev is going to point to the prev free block
+    excessFreeBlock->free = 1;                 // It is a free block [tag]
+
+    freeListTailBlock->next = excessFreeBlock; // the current blocks next points to the block-to-be
+    freeListTailBlock = excessFreeBlock;       // move the current block to the new block
+    print_LL();
   }
 
   //	Updates SMA info
@@ -521,8 +530,8 @@ void print_LL()
   block_meta *head = freeListHeadBlock;
   while (head != NULL)
   {
-    printf("head Size %d\n", head->size);
+    printf("head Size %d\n", head->block);
     head = head->next;
-    usleep(1000 * 500);
+    usleep(1000 * 200);
   }
 }
