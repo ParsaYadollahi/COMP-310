@@ -37,7 +37,7 @@ int main(int argc, char *argv[])
   puts("Test 1: Hole finding test...");
 
   // Allocating 32 kbytes of memory..
-  for (i = 0; i < 32; i++)
+  for (i = 0; i < 2; i++)
   {
     c[i] = (char *)sma_malloc(1024);
     // sprintf(str, "c[i]: %p", c[i]);
@@ -45,26 +45,27 @@ int main(int argc, char *argv[])
   }
 
   // Now deallocating some of the slots ..to free
-  for (i = 10; i < 18; i++)
-  {
-    sma_free(c[i]);
-    // sprintf(str, "Freeing c[i]: %p", c[i]);
-    // puts(str);
-  }
+  sma_free(c[1]);
+  // for (i = 10; i < 18; i++)
+  // {
+  //   sma_free(c[i]);
+  //   // sprintf(str, "Freeing c[i]: %p", c[i]);
+  //   // puts(str);
+  // }
 
   // Allocate some storage .. this should go into the freed storage
-  ct = (char *)sma_malloc(5 * 1024);
+  // ct = (char *)sma_malloc(5 * 1024);
   // sprintf(str, "CT : %p", ct);
   // puts(str);
 
   // Testing if you are finding the available holes
   print_LL();
-  printf("ct = %d\n", ct);
-  printf("c[31] = %d\n", c[31]);
-  if (ct < c[31])
-    puts("\t\t\t\t PASSED\n");
-  else
-    puts("\t\t\t\t FAILED\n");
+  // printf("ct = %d\n", ct);
+  // printf("c[31] = %d\n", c[31]);
+  // if (ct < c[31])
+  //   puts("\t\t\t\t PASSED\n");
+  // else
+  //   puts("\t\t\t\t FAILED\n");
   printf("done\n");
 
   // // Now deallocating some of the slots ..to free

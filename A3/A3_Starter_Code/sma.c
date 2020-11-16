@@ -122,6 +122,7 @@ void sma_free(void *ptr)
     block_meta *ptr_block;
     ptr_block = PROGRAM_BREAK;
     ptr_block->block = ptr;
+    printf("Address = %d\n", ptr);
     add_block_freeList(ptr_block); // coalesce
   }
 }
@@ -204,10 +205,10 @@ void *allocate_pBrk(int size)
   //	TODO: 	Allocate memory by incrementing the Program Break by calling sbrk() or brk()
   //	Hint:	Getting an exact "size" of memory might not be the best idea. Why?
   //			Also, if you are getting a larger memory, you need to put the excess in the free list
-  excessSize = size - sizeof(newBlock);
+  excessSize = size - META_SIZE;
 
   block = PROGRAM_BREAK;
-  newBlock = sbrk(size - sizeof(newBlock)); // request this much space in the heap
+  newBlock = sbrk(size - META_SIZE); // request this much space in the heap
   if (block->block == (void *)-1)
   {
     return NULL; // sbrk failed.
@@ -353,7 +354,7 @@ void allocate_block(block_meta *newBlock, int size, int excessSize, int fromFree
 
   if (freeListHead != NULL)
   {
-    minimum = current->size;
+    minimum = META_SIZE;
   }
   else
   {
@@ -366,7 +367,6 @@ void allocate_block(block_meta *newBlock, int size, int excessSize, int fromFree
   {
     //	TODO: Create a free block using the excess memory size, then assign it to the Excess Free Block
     block_meta *excess_free_block = PROGRAM_BREAK;
-
     excess_free_block->block = excessFreeBlock;
     excess_free_block->size = excessSize;
 
@@ -452,15 +452,13 @@ void add_block_freeList(block_meta *excessFreeBlock)
   }
   else
   {
-    printf("\t %d\n", excessFreeBlock);
-    excessFreeBlock->block = sbrk(1016);       // This the issue
+    excessFreeBlock->block = sbrk(META_SIZE);  // This the issue
     excessFreeBlock->next = NULL;              // next == null
     excessFreeBlock->prev = freeListTailBlock; // the new block prev is going to point to the prev free block
     excessFreeBlock->free = 1;                 // It is a free block [tag]
 
     freeListTailBlock->next = excessFreeBlock; // the current blocks next points to the block-to-be
     freeListTailBlock = excessFreeBlock;       // move the current block to the new block
-    print_LL();
   }
 
   //	Updates SMA info
@@ -532,6 +530,6 @@ void print_LL()
   {
     printf("head Size %d\n", head->block);
     head = head->next;
-    usleep(1000 * 200);
+    usleep(1000 * 100);
   }
 }
