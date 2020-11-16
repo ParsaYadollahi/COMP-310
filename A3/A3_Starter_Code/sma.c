@@ -95,8 +95,8 @@ void *sma_malloc(int size)
   // Updates SMA Info
   totalAllocatedSize += size;
   puts("- NOT RETURNING NULL - \n");
-  printf("---ProgramBreak = %d\n", pMemory);
-  printf("---sbrk(0) = %d\n", sbrk(0));
+  printf("---ptr = %d\n", pMemory);
+  printf("---sbrk(0) = %d\n\n", PROGRAM_BREAK);
   return pMemory;
 }
 
@@ -274,9 +274,8 @@ void *allocate_worst_fit(int size)
   while (head != NULL) /* Iterate through the entire list to find the largest block*/
   {
 
-    if (head->size >= max)
+    if (head->size >= max && head->size >= size)
     {
-      printf("%d----------HIT----------%d\n", max, head->size);
       worstBlock = head->block;
       blockFound = 1;
       max = head->size;
@@ -285,12 +284,11 @@ void *allocate_worst_fit(int size)
   }
   excessSize = size - max;
 
-  worst->block = sbrk(max);
-  memcpy(worst->block, worstBlock, max);
-
   //	Checks if appropriate block is found.
   if (blockFound)
   {
+    worst->block = sbrk(max);
+    memcpy(worst->block, worstBlock, max);
     //	Allocates the Memory
 
     allocate_block(worst, size, excessSize, 1);
@@ -363,8 +361,6 @@ void allocate_block(block_meta *newBlock, int size, int excessSize, int fromFree
     minimum = FREE_BLOCK_HEADER_SIZE;
   }
 
-  printf("excessSize = %d\n", excessSize);
-  printf("min = %d\n", minimum);
   addFreeBlock = excessSize > minimum;
   //	If excess free size is big enough
   if (addFreeBlock) // Want to add a free block
