@@ -21,6 +21,8 @@
 
 /* Includes */
 #include "sma.h" // Please add any libraries you plan to use inside this file
+#include <limits.h>
+#include <stdio.h>
 
 /* Definitions*/
 #define MAX_TOP_FREE (128 * 1024) // Max top free block size = 128 Kbytes
@@ -96,7 +98,7 @@ void *sma_malloc(int size)
 
   // Updates SMA Info
   totalAllocatedSize += size;
-  printf("pMemory = %d\n", pMemory);
+  // printf("pMemory = %d\n", pMemory);
   return pMemory;
 }
 
@@ -124,7 +126,7 @@ void sma_free(void *ptr)
     block_meta *ptr_block = get_block_ptr(ptr);
 
     freeing = 1;
-    printf("PTR_BLOCK = %d\n", ptr_block);
+    // printf("PTR_BLOCK = %d\n", ptr_block);
     add_block_freeList(ptr_block); // top 984 of this is already free | need to free bottom 40
     // i.e. the brk() (top) of the allocated block is sbrk(0 - 984)
   }
@@ -223,6 +225,7 @@ void *allocate_pBrk(int size)
 
   //	Allocates the Memory Block
   allocate_block(block, size, excessSize, 0);
+  // printf("RETURNING BLOCK = %d\n", block->size);
   return newBlock;
 }
 
@@ -269,25 +272,36 @@ void *allocate_worst_fit(int size)
   int blockFound = 0;
   int max = freeListHeadBlock->size;
 
-  block_meta *head = freeListHeadBlock; /* set head to the beginning of the list */
   block_meta *worst = PROGRAM_BREAK;
 
   //	TODO: 	Allocate memory by using Worst Fit Policy
   //	Hint:	Start off with the freeListHead and iterate through the entire list to get the largest block
-  while (head != NULL) /* Iterate through the entire list to find the largest block*/
+  block_meta *head = freeListHeadBlock; /* set head to the beginning of the list */
+  while (head != NULL)                  /* Iterate through the entire list to find the largest block*/
   {
-
     if (head->size >= max && head->size >= size)
     {
       worstBlock = head->prev->block;
-      printf("\t\t\t\tBLOCK FOUND = %d\n", worstBlock);
+      // printf("\t\t\t\theadsize = %d\n", head->size);
+      // printf("head->next = %d\n", head->next);
+      if (head->next != NULL && head == head->next)
+      {
+        break;
+      }
+      usleep(10000);
       blockFound = 1;
       max = head->size;
       worst->next = head->next;
       worst->prev = head->prev;
     }
+    usleep(1000);
+    if (head->next != NULL && head == head->next)
+    {
+      break;
+    }
     head = head->next;
   }
+
   excessSize = max - size;
 
   //	Checks if appropriate block is found.
@@ -296,6 +310,7 @@ void *allocate_worst_fit(int size)
   {
     //	Allocates the Memory
 
+    // printf("WORST BLOCK = %d\n", worst->size);
     allocate_block(worst, size, excessSize, 1);
   }
   else
@@ -314,29 +329,44 @@ void *allocate_worst_fit(int size)
  */
 void *allocate_next_fit(int size)
 {
-  void *nextBlock = NULL;
+  void *bestBlock = NULL;
   int excessSize;
   int blockFound = 0;
-  block_meta *block;
-  block->block = nextBlock;
+  block_meta *best = PROGRAM_BREAK;
+  int min = INT_MAX;
 
   //	TODO: 	Allocate memory by using Next Fit Policy
   //	Hint:	Start off with the freeListHead, and keep track of the current position in the free memory list.
   //			The next time you allocate, it should start from the current position.
+  block_meta *head = freeListHeadBlock; /* set head to the beginning of the list */
+  while (head != NULL)                  /* Iterate through the entire list to find the largest block*/
+  {
+
+    if (head->size <= min && head->size >= size)
+    {
+      bestBlock = head->prev->block;
+      blockFound = 1;
+      min = head->size;
+      best->next = head->next;
+      best->prev = head->prev;
+    }
+    head = head->next;
+  }
+  excessSize = min - size;
 
   //	Checks if appropriate found is found.
   if (blockFound)
   {
     //	Allocates the Memory Block
-    allocate_block(block, size, excessSize, 1);
+    allocate_block(best, size, excessSize, 1);
   }
   else
   {
     //	Assigns invalid address if appropriate block not found in free list
-    nextBlock = (void *)-2;
+    bestBlock = (void *)-2;
   }
 
-  return nextBlock;
+  return bestBlock;
 }
 
 /*
@@ -371,8 +401,10 @@ void allocate_block(block_meta *newBlock, int size, int excessSize, int fromFree
   if (addFreeBlock) // Want to add a free block
   {
     //	TODO: Create a free block using the excess memory size, then assign it to the Excess Free Block
+    // printf("\t\t\t\t\t\t\t newBlock = %d\n", newBlock->size);
     block_meta *excess_free_block = PROGRAM_BREAK; // on top of the 40 from the block before
     excess_free_block->block = excessFreeBlock;
+    // printf("\t\t\t\t\t\t\t excess_free_block = %d\n", excess_free_block->block);
     excess_free_block->size = excessSize; // 984 bytes || max - allocation
 
     //	Checks if the new block was allocated from the free memory list
@@ -381,6 +413,8 @@ void allocate_block(block_meta *newBlock, int size, int excessSize, int fromFree
     {
 
       //	Removes new block since allocated and adds the excess free block to the free list (i,e splits the free block in allocated and free)
+      // printf("excess_free_block->block = %d\n", excess_free_block->block);
+      // printf("newblock->block = %d\n", newBlock->block);
       replace_block_freeList(newBlock, excess_free_block);
     }
     else
@@ -412,13 +446,20 @@ void allocate_block(block_meta *newBlock, int size, int excessSize, int fromFree
 void replace_block_freeList(block_meta *oldBlock, block_meta *newBlock)
 {
   //	TODO: Replace the old block with the new block
+  // printf("oldblock->block = %d\n", oldBlock->block);
+  // printf("newblock->block = %d\n", newBlock->block);
   newBlock->next = oldBlock->next;
   newBlock->prev = oldBlock->prev;
 
-  puts("-----------HIT----------\n");
-  printf("%d\n", oldBlock->prev);
-  oldBlock->prev->next = newBlock;
-  oldBlock->next->prev = newBlock;
+  if (oldBlock->prev != NULL)
+  {
+    oldBlock->prev->next = newBlock;
+    // printf("%d\n", oldBlock->prev);
+  }
+  if (oldBlock->next != NULL)
+  {
+    oldBlock->next->prev = newBlock;
+  }
 
   //	Updates SMA info
   totalAllocatedSize += (get_blockSize(oldBlock) - get_blockSize(newBlock));
@@ -439,56 +480,62 @@ void add_block_freeList(block_meta *excessFreeBlock)
   //			Also, you would need to check if merging with the "adjacent" blocks is possible or not.
   //			Merging would be tideous. Check adjacent blocks, then also check if the merged
   //			block is at the top and is bigger than the largest free block allowed (128kB).
-
-  if (freeListHead == NULL)
+  if (excessFreeBlock->size > MAX_TOP_FREE)
   {
-    current = PROGRAM_BREAK;
-    excessFreeBlock->block = sbrk(984); // Requesting size amount of space in the heap
-    // INIT the tail of the list
-    excessFreeBlock->next = NULL;
-    excessFreeBlock->prev = NULL;
-    excessFreeBlock->free = 1;
-    freeListHead = excessFreeBlock->block; // HEAD of freelist
-    freeListTail = excessFreeBlock->block; // TAIL of freelist
-    freeListHeadBlock = excessFreeBlock;
-    current = excessFreeBlock;
-    freeListTailBlock = excessFreeBlock;
-  }
-  else if (freeing == 1)
-  {
-
-    // brk(-1024 - 984); // Move the break back down to the previous block (Before the allocated memo)
-    puts("---------HIT-----------\n");
-    printf("%d\n", excessFreeBlock->block);
-
-    excessFreeBlock->prev->block = sbrk(1024 + 984); // Allocate to the block before = two blocks (1024) - the prevs allocated block (40)
-    excessFreeBlock->prev->size += 1024;
-    if (excessFreeBlock->next != NULL)
-    {
-      excessFreeBlock->next->prev = excessFreeBlock->prev;
-    }
-    if (excessFreeBlock->prev != NULL)
-    {
-      excessFreeBlock->prev->next = excessFreeBlock->next;
-    }
-    freeing = 0;
-    // free(excessFreeBlock);
+    // printf("------The Requested amount exceeds 128KB it is %d-------\n", excessFreeBlock->size);
   }
   else
   {
-    // TODO: if not from sma_Free, sbrk(984) else sbrk(40)
-    excessFreeBlock->block = sbrk(984);        // This the issue
-    excessFreeBlock->next = NULL;              // next == null
-    excessFreeBlock->prev = freeListTailBlock; // the new block prev is going to point to the prev free block
-    excessFreeBlock->free = 1;                 // It is a free block [tag]
+    if (freeListHead == NULL)
+    {
+      current = PROGRAM_BREAK;
+      excessFreeBlock->block = sbrk(984); // Requesting size amount of space in the heap
+      // INIT the tail of the list
+      excessFreeBlock->next = NULL;
+      excessFreeBlock->prev = NULL;
+      excessFreeBlock->free = 1;
+      freeListHead = excessFreeBlock->block; // HEAD of freelist
+      freeListTail = excessFreeBlock->block; // TAIL of freelist
+      freeListHeadBlock = excessFreeBlock;
+      current = excessFreeBlock;
+      freeListTailBlock = excessFreeBlock;
+    }
+    else if (freeing == 1)
+    {
 
-    freeListTailBlock->next = excessFreeBlock; // the current blocks next points to the block-to-be
-    freeListTailBlock = excessFreeBlock;       // move the current block to the new block
+      // brk(-1024 - 984); // Move the break back down to the previous block (Before the allocated memo)
+      puts("---------HIT2-----------\n");
+      // printf("size of block = %d\n", excessFreeBlock->size + META_SIZE);
+
+      excessFreeBlock->prev->block = sbrk(excessFreeBlock->prev->size + (excessFreeBlock->size + META_SIZE) - META_SIZE); // Allocate to the block before = two blocks (1024) - the prevs allocated block (40)
+      excessFreeBlock->prev->size += excessFreeBlock->size + META_SIZE;
+      if (excessFreeBlock->next != NULL)
+      {
+        excessFreeBlock->next->prev = excessFreeBlock->prev;
+      }
+      if (excessFreeBlock->prev != NULL)
+      {
+        excessFreeBlock->prev->next = excessFreeBlock->next;
+      }
+      freeing = 0;
+      // remove_block_freeList();
+    }
+    else
+    {
+      // TODO: if not from sma_Free, sbrk(984) else sbrk(40)
+      excessFreeBlock->block = sbrk(excessFreeBlock->size);
+      excessFreeBlock->next = NULL;              // next == null
+      excessFreeBlock->prev = freeListTailBlock; // the new block prev is going to point to the prev free block
+      excessFreeBlock->free = 1;                 // It is a free block [tag]
+
+      freeListTailBlock->next = excessFreeBlock; // the current blocks next points to the block-to-be
+      freeListTailBlock = excessFreeBlock;       // move the current block to the new block
+    }
+
+    //	Updates SMA info
+    totalAllocatedSize -= get_blockSize(excessFreeBlock->block);
+    totalFreeSize += get_blockSize(excessFreeBlock->block);
   }
-
-  //	Updates SMA info
-  totalAllocatedSize -= get_blockSize(excessFreeBlock->block);
-  totalFreeSize += get_blockSize(excessFreeBlock->block);
 }
 
 /*
@@ -553,7 +600,9 @@ block_meta *get_block_ptr(void *ptr)
   printf("\tPTR = %d\n", ptr);
   while (head != NULL)
   {
-    if (head->block == ptr + 40) // 40 for the size of the block
+    usleep(10000);
+    // printf("head->block = %d\n", head->block);
+    if (head->block == ptr + META_SIZE) // 40 for the size of the block
     {
       return head;
     }
@@ -565,7 +614,7 @@ block_meta *get_block_ptr(void *ptr)
 
 void print_LL()
 {
-  printf("----Printing_values_in_linkedlist----\n");
+  // printf("----Printing_values_in_linkedlist----\n");
   block_meta *head = freeListHeadBlock;
   while (head != NULL)
   {
