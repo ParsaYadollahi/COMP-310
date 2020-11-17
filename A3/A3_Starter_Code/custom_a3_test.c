@@ -43,7 +43,6 @@ int main(int argc, char *argv[])
     // sprintf(str, "c[i]: %p", c[i]);
     // puts(str);
   }
-  print_LL();
 
   // Now deallocating some of the slots ..to free
   for (i = 10; i < 18; i++)
@@ -102,7 +101,6 @@ int main(int argc, char *argv[])
   // Now deallocating some of the slots ..to free
   // One chunk of 5x16 kbytes
   sma_free(c[31]);
-  puts("---TESTHIT---\n");
   sma_free(c[30]);
   sma_free(c[29]);
   sma_free(c[28]);

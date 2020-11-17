@@ -282,19 +282,15 @@ void *allocate_worst_fit(int size)
     if (head->size >= max && head->size >= size)
     {
       worstBlock = head->prev->block;
-      // printf("\t\t\t\theadsize = %d\n", head->size);
-      // printf("head->next = %d\n", head->next);
       if (head->next != NULL && head == head->next)
       {
         break;
       }
-      usleep(10000);
       blockFound = 1;
       max = head->size;
-      worst->next = head->next;
-      worst->prev = head->prev;
+      worst = head->prev;
+      // memcpy(worst->block, head->block, head->block);
     }
-    usleep(1000);
     if (head->next != NULL && head == head->next)
     {
       break;
@@ -302,15 +298,12 @@ void *allocate_worst_fit(int size)
     head = head->next;
   }
 
-  excessSize = max - size;
-
-  //	Checks if appropriate block is found.
+  excessSize = max - size; // Ex: want to allocate 1024 bytes from 500 ==> excess = 1500
   worst->block = worstBlock;
+  //	Checks if appropriate block is found.
   if (blockFound)
   {
     //	Allocates the Memory
-
-    // printf("WORST BLOCK = %d\n", worst->size);
     allocate_block(worst, size, excessSize, 1);
   }
   else
@@ -401,10 +394,8 @@ void allocate_block(block_meta *newBlock, int size, int excessSize, int fromFree
   if (addFreeBlock) // Want to add a free block
   {
     //	TODO: Create a free block using the excess memory size, then assign it to the Excess Free Block
-    // printf("\t\t\t\t\t\t\t newBlock = %d\n", newBlock->size);
     block_meta *excess_free_block = PROGRAM_BREAK; // on top of the 40 from the block before
     excess_free_block->block = excessFreeBlock;
-    // printf("\t\t\t\t\t\t\t excess_free_block = %d\n", excess_free_block->block);
     excess_free_block->size = excessSize; // 984 bytes || max - allocation
 
     //	Checks if the new block was allocated from the free memory list
@@ -413,8 +404,6 @@ void allocate_block(block_meta *newBlock, int size, int excessSize, int fromFree
     {
 
       //	Removes new block since allocated and adds the excess free block to the free list (i,e splits the free block in allocated and free)
-      // printf("excess_free_block->block = %d\n", excess_free_block->block);
-      // printf("newblock->block = %d\n", newBlock->block);
       replace_block_freeList(newBlock, excess_free_block);
     }
     else
@@ -447,7 +436,6 @@ void replace_block_freeList(block_meta *oldBlock, block_meta *newBlock)
 {
   //	TODO: Replace the old block with the new block
   // printf("oldblock->block = %d\n", oldBlock->block);
-  // printf("newblock->block = %d\n", newBlock->block);
   newBlock->next = oldBlock->next;
   newBlock->prev = oldBlock->prev;
 
@@ -503,11 +491,7 @@ void add_block_freeList(block_meta *excessFreeBlock)
     else if (freeing == 1)
     {
 
-      // brk(-1024 - 984); // Move the break back down to the previous block (Before the allocated memo)
-      puts("---------HIT2-----------\n");
-      // printf("size of block = %d\n", excessFreeBlock->size + META_SIZE);
-
-      excessFreeBlock->prev->block = sbrk(excessFreeBlock->prev->size + (excessFreeBlock->size + META_SIZE) - META_SIZE); // Allocate to the block before = two blocks (1024) - the prevs allocated block (40)
+      excessFreeBlock->prev->block += excessFreeBlock->size + META_SIZE; // Allocate to the block before = two blocks (1024) - the prevs allocated block (40)
       excessFreeBlock->prev->size += excessFreeBlock->size + META_SIZE;
       if (excessFreeBlock->next != NULL)
       {
@@ -518,7 +502,6 @@ void add_block_freeList(block_meta *excessFreeBlock)
         excessFreeBlock->prev->next = excessFreeBlock->next;
       }
       freeing = 0;
-      // remove_block_freeList();
     }
     else
     {
@@ -597,12 +580,11 @@ int get_largest_freeBlock()
 block_meta *get_block_ptr(void *ptr)
 {
   block_meta *head = freeListHeadBlock;
-  printf("\tPTR = %d\n", ptr);
   while (head != NULL)
   {
     usleep(10000);
     // printf("head->block = %d\n", head->block);
-    if (head->block == ptr + META_SIZE) // 40 for the size of the block
+    if (head->block == ptr || head->block == ptr + META_SIZE) // 40 for the size of the block
     {
       return head;
     }
@@ -618,8 +600,8 @@ void print_LL()
   block_meta *head = freeListHeadBlock;
   while (head != NULL)
   {
-    printf("head Size %d\n", head->size);
-    printf("head block %d\n", head->block);
+    // printf("head Size %d\n", head->size);
+    // printf("head block %d\n", head->block);
     head = head->next;
     usleep(1000 * 10);
   }
