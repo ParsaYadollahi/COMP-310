@@ -337,6 +337,7 @@ void *allocate_next_fit(int size)
 
     if (head->size <= min && head->size >= size)
     {
+      puts("------------------HIT------------------\n");
       bestBlock = head->prev->block;
       blockFound = 1;
       min = head->size;
@@ -344,6 +345,10 @@ void *allocate_next_fit(int size)
       best->prev = head->prev;
     }
     head = head->next;
+    if (head->next != NULL && head == head->next)
+    {
+      break;
+    }
   }
   excessSize = min - size;
 

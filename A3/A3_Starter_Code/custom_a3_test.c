@@ -141,4 +141,34 @@ int main(int argc, char *argv[])
 
   //	Freeing cp2
   sma_free(cp2);
+
+  // Test 4: Next Fit Test
+  puts("Test 4: Check for Next Fit algorithm...");
+  // Sets Policy to Next Fit
+  sma_mallopt(NEXT_FIT);
+
+  char *cp3 = (char *)sma_malloc(16 * 1024 * 3);
+  char *cp4 = (char *)sma_malloc(16 * 1024 * 2);
+
+  // Testing if the correct holes have been allocated
+  if (cp3 == c[8] && cp3 != NULL)
+  {
+    if (cp4 == c[19])
+    {
+      // sprintf(str, "C[19]: %p", c[19]);
+      // puts(str);
+      // sprintf(str, "CP4: %p", cp4);
+      // puts(str);
+
+      puts("\t\t\t\t PASSED\n");
+    }
+    else
+    {
+      puts("\t\t\t\t FAILED\n");
+    }
+  }
+  else
+  {
+    puts("\t\t\t\t FAILED\n");
+  }
 }
