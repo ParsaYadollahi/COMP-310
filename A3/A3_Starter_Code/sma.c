@@ -30,7 +30,6 @@
 #define FREE_BLOCK_HEADER_SIZE 2 * sizeof(char *) + sizeof(int) // Size of the Header in a free memory block
 #define META_SIZE sizeof(block_meta)
 //	TODO: Add constants here
-#define META_SIZE sizeof(struct block_meta)
 #define PROGRAM_BREAK sbrk(0)
 
 typedef enum //	Policy type definition
@@ -126,7 +125,6 @@ void sma_free(void *ptr)
     block_meta *ptr_block = get_block_ptr(ptr);
 
     freeing = 1;
-    // printf("PTR_BLOCK = %d\n", ptr_block);
     add_block_freeList(ptr_block); // top 984 of this is already free | need to free bottom 40
     // i.e. the brk() (top) of the allocated block is sbrk(0 - 984)
   }
@@ -225,7 +223,10 @@ void *allocate_pBrk(int size)
 
   //	Allocates the Memory Block
   allocate_block(block, size, excessSize, 0);
-  // printf("RETURNING BLOCK = %d\n", block->size);
+  if (newBlock == NULL)
+  {
+    printf("AAAAAAAA\n");
+  }
   return newBlock;
 }
 
@@ -266,7 +267,6 @@ void *allocate_freeList(int size)
  */
 void *allocate_worst_fit(int size)
 {
-
   void *worstBlock = NULL;
   int excessSize;
   int blockFound = 0;
@@ -281,21 +281,16 @@ void *allocate_worst_fit(int size)
   {
     if (head->size >= max && head->size >= size)
     {
+      worst = head->prev;
       worstBlock = head->prev->block;
-      if (head->next != NULL && head == head->next)
-      {
-        break;
-      }
       blockFound = 1;
       max = head->size;
-      worst = head->prev;
-      // memcpy(worst->block, head->block, head->block);
-    }
-    if (head->next != NULL && head == head->next)
-    {
-      break;
     }
     head = head->next;
+  }
+  if (worst->next != NULL)
+  {
+    printf("----------\tnext = %d\n", worst->next->size);
   }
 
   excessSize = max - size; // Ex: want to allocate 1024 bytes from 500 ==> excess = 1500
@@ -408,7 +403,8 @@ void allocate_block(block_meta *newBlock, int size, int excessSize, int fromFree
     if (fromFreeList)
     {
 
-      //	Removes new block since allocated and adds the excess free block to the free list (i,e splits the free block in allocated and free)
+      //	Removes new block since allocated and adds the excess free block to the free list
+      // (i,e splits the free block in allocated and free)
       replace_block_freeList(newBlock, excess_free_block);
     }
     else
@@ -455,8 +451,8 @@ void replace_block_freeList(block_meta *oldBlock, block_meta *newBlock)
   }
 
   //	Updates SMA info
-  totalAllocatedSize += (get_blockSize(oldBlock) - get_blockSize(newBlock));
-  totalFreeSize += (get_blockSize(newBlock) - get_blockSize(oldBlock));
+  totalAllocatedSize += (oldBlock->size - newBlock->size);
+  totalFreeSize += (newBlock->size - oldBlock->size);
 }
 
 /*
@@ -495,8 +491,8 @@ void add_block_freeList(block_meta *excessFreeBlock)
     }
     else if (freeing == 1)
     {
-
-      excessFreeBlock->prev->block += excessFreeBlock->size + META_SIZE; // Allocate to the block before = two blocks (1024) - the prevs allocated block (40)
+      // Allocate to the block before = two blocks (1024) - the prevs allocated block (40)
+      excessFreeBlock->prev->block += excessFreeBlock->size + META_SIZE;
       excessFreeBlock->prev->size += excessFreeBlock->size + META_SIZE;
       if (excessFreeBlock->next != NULL)
       {
@@ -521,8 +517,8 @@ void add_block_freeList(block_meta *excessFreeBlock)
     }
 
     //	Updates SMA info
-    totalAllocatedSize -= get_blockSize(excessFreeBlock->block);
-    totalFreeSize += get_blockSize(excessFreeBlock->block);
+    totalAllocatedSize -= excessFreeBlock->size;
+    totalFreeSize += excessFreeBlock->size;
   }
 }
 
@@ -571,7 +567,19 @@ int get_largest_freeBlock()
 {
   int largestBlockSize = 0;
 
-  //	TODO: Iterate through the Free Block List to find the largest free block and return its size
+  block_meta *head = freeListHeadBlock;
+  while (head != NULL)
+  {
+    if (head->size > largestBlockSize)
+    {
+      largestBlockSize = head->size;
+    }
+    head = head->next;
+    if (head->next != NULL && head == head->next)
+    {
+      break;
+    }
+  }
 
   return largestBlockSize;
 }
@@ -587,13 +595,16 @@ block_meta *get_block_ptr(void *ptr)
   block_meta *head = freeListHeadBlock;
   while (head != NULL)
   {
-    usleep(10000);
     // printf("head->block = %d\n", head->block);
     if (head->block == ptr || head->block == ptr + META_SIZE) // 40 for the size of the block
     {
       return head;
     }
     head = head->next;
+    if (head->next != NULL && head == head->next)
+    {
+      break;
+    }
   }
   puts("-------RET_NULL-------\n");
   return NULL;
@@ -605,8 +616,8 @@ void print_LL()
   block_meta *head = freeListHeadBlock;
   while (head != NULL)
   {
-    // printf("head Size %d\n", head->size);
-    // printf("head block %d\n", head->block);
+    printf("head Size %d\n", head->size);
+    printf("head block %d\n", head->block);
     head = head->next;
     usleep(1000 * 10);
   }

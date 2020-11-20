@@ -43,6 +43,7 @@ int main(int argc, char *argv[])
     // sprintf(str, "c[i]: %p", c[i]);
     // puts(str);
   }
+  print_LL();
 
   // Now deallocating some of the slots ..to free
   for (i = 10; i < 18; i++)
@@ -52,7 +53,6 @@ int main(int argc, char *argv[])
     // puts(str);
   }
   puts("\n\n\n");
-  print_LL();
 
   // Allocate some storage .. this should go into the freed storage
   ct = (char *)sma_malloc(5 * 1024);
