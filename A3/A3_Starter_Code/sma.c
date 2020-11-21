@@ -97,7 +97,6 @@ void *sma_malloc(int size)
 
   // Updates SMA Info
   totalAllocatedSize += size;
-  // printf("pMemory = %d\n", pMemory);
   return pMemory;
 }
 
@@ -115,11 +114,7 @@ void sma_free(void *ptr)
     puts("Error: Attempting to free NULL!");
   }
   //	Checks if the ptr is beyond Program Break
-  else if (ptr > PROGRAM_BREAK)
-  {
-    puts("Error: Attempting to free unallocated space!");
-  }
-  else
+  else if (ptr < PROGRAM_BREAK)
   {
     //	Adds the block to the free memory list
     block_meta *ptr_block = get_block_ptr(ptr);
@@ -185,6 +180,15 @@ void *sma_realloc(void *ptr, int size)
   //			then check if there is sufficient adjacent free space to expand, otherwise find a new block
   //			like sma_malloc.
   //			Should not accept a NULL pointer, and the size should be greater than 0.
+  if (ptr != 0)
+  {
+    sma_malloc(size);
+  }
+  else if (ptr != 0 && get_block_ptr(ptr) != NULL)
+  {
+    sma_free(ptr);
+    sma_malloc(size);
+  }
 }
 
 /*
@@ -223,10 +227,6 @@ void *allocate_pBrk(int size)
 
   //	Allocates the Memory Block
   allocate_block(block, size, excessSize, 0);
-  if (newBlock == NULL)
-  {
-    printf("AAAAAAAA\n");
-  }
   return newBlock;
 }
 
@@ -288,10 +288,6 @@ void *allocate_worst_fit(int size)
     }
     head = head->next;
   }
-  if (worst->next != NULL)
-  {
-    printf("----------\tnext = %d\n", worst->next->size);
-  }
 
   excessSize = max - size; // Ex: want to allocate 1024 bytes from 500 ==> excess = 1500
   worst->block = worstBlock;
@@ -332,7 +328,6 @@ void *allocate_next_fit(int size)
 
     if (head->size <= min && head->size >= size)
     {
-      puts("------------------HIT------------------\n");
       bestBlock = head->prev->block;
       blockFound = 1;
       min = head->size;
@@ -436,14 +431,12 @@ void allocate_block(block_meta *newBlock, int size, int excessSize, int fromFree
 void replace_block_freeList(block_meta *oldBlock, block_meta *newBlock)
 {
   //	TODO: Replace the old block with the new block
-  // printf("oldblock->block = %d\n", oldBlock->block);
   newBlock->next = oldBlock->next;
   newBlock->prev = oldBlock->prev;
 
   if (oldBlock->prev != NULL)
   {
     oldBlock->prev->next = newBlock;
-    // printf("%d\n", oldBlock->prev);
   }
   if (oldBlock->next != NULL)
   {
@@ -471,7 +464,6 @@ void add_block_freeList(block_meta *excessFreeBlock)
   //			block is at the top and is bigger than the largest free block allowed (128kB).
   if (excessFreeBlock->size > MAX_TOP_FREE)
   {
-    // printf("------The Requested amount exceeds 128KB it is %d-------\n", excessFreeBlock->size);
   }
   else
   {
@@ -595,7 +587,6 @@ block_meta *get_block_ptr(void *ptr)
   block_meta *head = freeListHeadBlock;
   while (head != NULL)
   {
-    // printf("head->block = %d\n", head->block);
     if (head->block == ptr || head->block == ptr + META_SIZE) // 40 for the size of the block
     {
       return head;
@@ -606,13 +597,11 @@ block_meta *get_block_ptr(void *ptr)
       break;
     }
   }
-  puts("-------RET_NULL-------\n");
   return NULL;
 }
 
 void print_LL()
 {
-  // printf("----Printing_values_in_linkedlist----\n");
   block_meta *head = freeListHeadBlock;
   while (head != NULL)
   {
