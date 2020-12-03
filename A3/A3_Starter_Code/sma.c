@@ -76,7 +76,6 @@ void *sma_malloc(int size)
   // If free list is not empty
   else
   {
-
     // Allocate memory from the free memory list
     pMemory = allocate_freeList(size);
 
@@ -598,16 +597,4 @@ block_meta *get_block_ptr(void *ptr)
     }
   }
   return NULL;
-}
-
-void print_LL()
-{
-  block_meta *head = freeListHeadBlock;
-  while (head != NULL)
-  {
-    printf("head Size %d\n", head->size);
-    printf("head block %d\n", head->block);
-    head = head->next;
-    usleep(1000 * 10);
-  }
 }
